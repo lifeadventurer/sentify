@@ -65,14 +65,14 @@ To configure the application, update the `config.py` file in the `src/config` di
 TOP_COMPANIES_COUNT = 10000
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 UTC_DIFFERENCE = 8
-NEWS_LOOKBACK_DAYS = 1
+MAX_NEWS_LOOKBACK_DAYS = 60
 CPU_COUNT = 2
 ```
 
 - `TOP_COMPANIES_COUNT`: The number of top companies ranked by market cap to search.
 - `TIMESTAMP_FORMAT`: The format for timestamps used in the application, especially for the news API.
 - `UTC_DIFFERENCE`: The difference in hours between local time and UTC.
-- `NEWS_LOOKBACK_DAYS`: The number of days to look back when fetching news articles.
+- `MAX_NEWS_LOOKBACK_DAYS`: The max number of days to look back when fetching news articles.
 - `CPU_COUNT`: The number of CPUs to be used for multiprocessing.
 
 ## LICENSE

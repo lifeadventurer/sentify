@@ -8,6 +8,45 @@
     integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.css"
+    integrity="sha512-MKxcSu/LDtbIYHBNAWUQwfB3iVoG9xeMCm32QV5hZ/9lFaQZJVaXfz9aFa0IZExWzCpm7OWvp9zq9gVip/nLMg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const slider = document.getElementById("slider")
+      const formatter = {
+        to: (value) => `${parseInt(value)} day`,
+        from: (value) => {
+          return parseInt(value.replace(' day', ''));
+        }
+      };
+
+      noUiSlider.create(slider, {
+        connect: true,
+        range: {
+          'min': 0,
+          'max': {{ max_news_lookback_days }},
+        },
+        step: 1,
+        {% if company_exists %}
+          start: [{{ start_day }}, {{ end_day }}],
+        {% else %}
+          start: [0, 2],
+        {% endif %}
+        tooltips: [formatter, formatter],
+      });
+
+      slider.noUiSlider.on('update', (values) => {
+        console.log(values);
+        const start = parseInt(values[0]);
+        const end = parseInt(values[1]);
+
+        document.querySelector('form > input#start').value = start;
+        document.querySelector('form > input#end').value = end;
+      });
+    });
+  </script>
 </head>
 
 <body>
@@ -17,9 +56,16 @@
       <div class="col-8">
         <form action="/" method="post" class="input-group">
           <input list="companies" name="company" id="company" class="form-control mx-auto col-4"
+            {% if company_exists %}
+              value="{{ ticker_symbol }}"
+            {% endif %}
             placeholder="Enter company name or ticker symbol">
+          <input name="start" id="start" style="display: none;">
+          <input name="end" id="end" style="display: none;">
           <button type="submit" class="btn btn-primary col-2">Search</button>
         </form>
+        <br/><br/>
+        <div id="slider"></div>
       </div>
     </div>
     <div class="row mt-4">
@@ -222,6 +268,10 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"
     integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy"
     crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.js"
+    integrity="sha512-g/feAizmeiVKSwvfW0Xk3ZHZqv5Zs8PEXEBKzL15pM0SevEvoX8eJ4yFWbqakvRj7vtw1Q97bLzEpG2IVWX0Mg=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
 </body>
 
 </html>

@@ -3,7 +3,7 @@ from multiprocessing import Pool
 
 from flask import Flask, render_template, request
 
-from config.config import CPU_COUNT, NEWS_LOOKBACK_DAYS, TIMESTAMP_FORMAT
+from config.config import CPU_COUNT, MAX_NEWS_LOOKBACK_DAYS, TIMESTAMP_FORMAT
 from scrapers import yahoo_news_scraper
 from utils import action, data, sentiment_analyzer, time
 
@@ -74,15 +74,20 @@ def create_app() -> Flask:
     @app.route("/", methods=["POST"])
     def search():
         input_company = request.form["company"]
+        start_day = int(request.form["start"])
+        end_day = int(request.form["end"])
 
         company_exists, [company_name, ticker_symbol] = (
             data.check_company_exists(input_company)
         )
         if company_exists:
-            current_timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
-            start_timestamp = (
-                datetime.now() - timedelta(days=NEWS_LOOKBACK_DAYS)
+            current_timestamp = (
+                datetime.now() - timedelta(days=start_day)
             ).strftime(TIMESTAMP_FORMAT)
+            start_timestamp = (
+                datetime.now() - timedelta(days=end_day)
+            ).strftime(TIMESTAMP_FORMAT)
+
             news = yahoo_news_scraper.get_news_URLs(
                 ticker_symbol,
                 start_timestamp=start_timestamp,
@@ -119,6 +124,7 @@ def create_app() -> Flask:
                 news=news,
                 recommended_action=recommended_action,
                 confidence_index=f"{confidence_index: .3f}",
+                max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
             )
         else:
             return render_template(
