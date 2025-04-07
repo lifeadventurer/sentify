@@ -69,7 +69,9 @@ def create_app() -> Flask:
 
     @app.route("/")
     def home():
-        return render_template("index.html", max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS)
+        return render_template(
+            "index.html", max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS
+        )
 
     @app.route("/", methods=["POST"])
     def search():
