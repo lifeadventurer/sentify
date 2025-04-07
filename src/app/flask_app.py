@@ -69,7 +69,7 @@ def create_app() -> Flask:
 
     @app.route("/")
     def home():
-        return render_template("index.html")
+        return render_template("index.html", max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS)
 
     @app.route("/", methods=["POST"])
     def search():
@@ -125,12 +125,15 @@ def create_app() -> Flask:
                 recommended_action=recommended_action,
                 confidence_index=f"{confidence_index: .3f}",
                 max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
+                start_day=start_day,
+                end_day=end_day,
             )
         else:
             return render_template(
                 "index.html",
                 company_exists=company_exists,
                 message="No such company exists",
+                max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
             )
 
     return app
