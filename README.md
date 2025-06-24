@@ -11,6 +11,7 @@ This project focuses on analyzing the sentiment of news articles to predict stoc
 ## Prerequisites
 
 Before you begin, make sure you have the following installed:
+
 - Python (version 3.11 or higher)
 - Poetry (recommended)
 - or pip
@@ -20,47 +21,48 @@ Before you begin, make sure you have the following installed:
 ### Using Poetry (recommended)
 
 1. Clone the repository:
-    ```shell
-    git clone https://github.com/LifeAdventurer/sentify.git
-    cd sentify
-    ```
+   ```shell
+   git clone https://github.com/LifeAdventurer/sentify.git
+   cd sentify
+   ```
 2. Install dependencies:
-    ```shell
-    poetry install
-    ```
+   ```shell
+   poetry install
+   ```
 3. Activate the virtual environment:
-    ```shell
-    poetry env activate
-    poetry shell
-    ```
+   ```shell
+   poetry env activate
+   ```
 
 ### Using pip
 
 1. Clone the repository:
-    ```shell
-    git clone https://github.com/LifeAdventurer/sentify.git
-    cd sentify
-    ```
+   ```shell
+   git clone https://github.com/LifeAdventurer/sentify.git
+   cd sentify
+   ```
 2. Create and activate a virtual environment:
-    ```shell
-    python -m venv venv
-    source venv/bin/activate # On Windows use `venv\Scripts\activate`
-    ```
+   ```shell
+   python -m venv venv
+   source venv/bin/activate # On Windows use `venv\Scripts\activate`
+   ```
 3. Install dependencies:
-    ```shell
-    pip install -r requirements.txt
-    ```
+   ```shell
+   pip install -r requirements.txt
+   ```
 
 ## Usage
 
 To serve the Flask app locally, run:
+
 ```
-python src/main.py
+poetry run python3 src/main.py
 ```
 
 ## Configuration
 
 To configure the application, update the `config.py` file in the `src/config` directory. Key parameters include:
+
 ```
 TOP_COMPANIES_COUNT = 10000
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
