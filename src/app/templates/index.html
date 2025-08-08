@@ -3,257 +3,594 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Sentiment Analysis on News</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentify - Stock Market Sentiment Analysis</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.css"
-    integrity="sha512-MKxcSu/LDtbIYHBNAWUQwfB3iVoG9xeMCm32QV5hZ/9lFaQZJVaXfz9aFa0IZExWzCpm7OWvp9zq9gVip/nLMg=="
-    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.css">
+
+  <!-- Custom CSS -->
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --secondary-color: #64748b;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+      --light-bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+    }
+
+    body {
+      background-color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-primary);
+    }
+
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+      color: var(--primary-color);
+      padding: 2rem 0;
+      text-align: center;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      border: 1px solid #dbeafe;
+    }
+
+    .header h1 {
+      font-weight: 700;
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin: 0;
+    }
+
+    .search-section {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+
+    .search-form {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .form-control {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.1);
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      transition: background-color 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .slider-container {
+      margin-top: 1.5rem;
+      padding: 0 1rem;
+    }
+
+    .noUi-connect {
+      background: var(--primary-color);
+    }
+
+    .noUi-handle {
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .company-header {
+      background: white;
+      padding: 1.5rem;
+      text-align: center;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+
+    .company-name {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .ticker-symbol {
+      background: var(--light-bg);
+      color: var(--secondary-color);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-weight: 500;
+      display: inline-block;
+    }
+
+    .card {
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1.5rem;
+      background: white;
+    }
+
+    .card-header {
+      background: var(--light-bg);
+      border-bottom: 1px solid var(--border-color);
+      border-radius: 12px 12px 0 0 !important;
+      padding: 1rem 1.5rem;
+    }
+
+    .card-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .news-item {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      background: white;
+    }
+
+    .news-header {
+      padding: 1rem 1.5rem;
+      background: var(--light-bg);
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .news-header:hover {
+      background: #f1f5f9;
+    }
+
+    .news-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .news-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.75rem;
+    }
+
+    .news-time {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .sentiment-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 16px;
+      font-weight: 500;
+      font-size: 0.875rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .sentiment-positive {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success-color);
+    }
+
+    .sentiment-neutral {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning-color);
+    }
+
+    .sentiment-negative {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger-color);
+    }
+
+    .news-content {
+      padding: 1rem 1.5rem;
+      background: white;
+    }
+
+    .paragraph {
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: var(--light-bg);
+      border-radius: 6px;
+      border-left: 3px solid var(--primary-color);
+    }
+
+    .paragraph-text {
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+      color: var(--text-primary);
+    }
+
+    .sentiment-scores {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .score-badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .score-positive {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success-color);
+    }
+
+    .score-neutral {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning-color);
+    }
+
+    .score-negative {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger-color);
+    }
+
+    .recommendation-card {
+      background: white;
+      border: 2px solid var(--primary-color);
+      text-align: center;
+      padding: 1.5rem;
+      border-radius: 12px;
+    }
+
+    .recommendation-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+
+    .recommendation-action {
+      font-size: 2.5rem !important;
+      font-weight: 900 !important;
+      margin-bottom: 1rem;
+      line-height: 1;
+    }
+
+    .recommendation-buy {
+      color: var(--success-color) !important;
+    }
+
+    .recommendation-hold {
+      color: var(--warning-color) !important;
+    }
+
+    .recommendation-sell {
+      color: var(--danger-color) !important;
+    }
+
+    .confidence-index {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .chart-container {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border-color);
+      border-top: 3px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger-color);
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .main-container {
+        padding: 1rem;
+      }
+
+      .header h1 {
+        font-size: 2rem;
+      }
+
+      .news-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .sentiment-scores {
+        justify-content: flex-start;
+      }
+    }
+  </style>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      const slider = document.getElementById("slider")
+      const slider = document.getElementById("slider");
       const formatter = {
-        to: (value) => `${parseInt(value)} day`,
+        to: (value) => `${parseInt(value)} day${parseInt(value) !== 1 ? 's' : ''}`,
         from: (value) => {
-          return parseInt(value.replace(' day', ''));
+          return parseInt(value.replace(' day', '').replace('s', ''));
         }
       };
 
-      noUiSlider.create(slider, {
-        connect: true,
-        range: {
-          'min': 0,
-          'max': {{ max_news_lookback_days }},
-        },
-        step: 1,
-        {% if company_exists %}
-          start: [{{ start_day }}, {{ end_day }}],
-        {% else %}
-          start: [0, 2],
-        {% endif %}
-        tooltips: [formatter, formatter],
-      });
+      if (slider) {
+        noUiSlider.create(slider, {
+          connect: true,
+          range: {
+            'min': 0,
+            'max': {{ max_news_lookback_days }}
+          },
+          step: 1,
+          {%- if company_exists -%}
+          start: [{{ start_day }}, {{ end_day }}]
+          // {%- else -%}
+          start: [0, 2]
+          {%- endif -%},
+          tooltips: [formatter, formatter]
+        });
 
-      slider.noUiSlider.on('update', (values) => {
-        const start = parseInt(values[0]);
-        const end = parseInt(values[1]);
+        slider.noUiSlider.on('update', (values) => {
+          const start = parseInt(values[0]);
+          const end = parseInt(values[1]);
 
-        document.querySelector('form > input#start').value = start;
-        document.querySelector('form > input#end').value = end;
-      });
+          document.querySelector('form > input#start').value = start;
+          document.querySelector('form > input#end').value = end;
+        });
+
+        // Initialize hidden fields with current slider values
+        const initialValues = slider.noUiSlider.get();
+        document.querySelector('form > input#start').value = parseInt(initialValues[0]);
+        document.querySelector('form > input#end').value = parseInt(initialValues[1]);
+      }
+
+      // Show loading state on form submission
+      const form = document.querySelector('form');
+      if (form) {
+        form.addEventListener('submit', function() {
+          const loading = document.getElementById('loading');
+          if (loading) {
+            loading.style.display = 'block';
+          }
+        });
+      }
     });
   </script>
 </head>
 
 <body>
-  <div class="container-fluid px-5">
-    <h1 class="text-center mt-3">Sentiment Analysis on News with Stock Market Insights</h1>
-    <div class="row justify-content-center mt-5">
-      <div class="col-8">
-        <form action="/" method="post" class="input-group">
-          <input list="companies" name="company" id="company" class="form-control mx-auto col-4"
+  <div class="main-container">
+    <!-- Header -->
+    <div class="header">
+      <h1><i class="fas fa-chart-line me-3"></i>Sentify</h1>
+      <p>AI-Powered Stock Market Sentiment Analysis</p>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+      <form action="/" method="post" class="search-form">
+        <div class="input-group">
+          <input list="companies" name="company" id="company" class="form-control"
             {% if company_exists %}
               value="{{ ticker_symbol }}"
             {% endif %}
-            placeholder="Enter company name or ticker symbol">
-          <input name="start" id="start" style="display: none;">
-          <input name="end" id="end" style="display: none;">
-          <button type="submit" class="btn btn-primary col-2">Search</button>
-        </form>
-        <br/><br/>
+            placeholder="Enter company name or ticker symbol (e.g., Apple, AAPL)">
+          <input name="start" id="start" value="0" style="display: none;">
+          <input name="end" id="end" value="2" style="display: none;">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-search me-2"></i>Analyze
+          </button>
+        </div>
+      </form>
+
+      <div class="slider-container">
+        <label class="form-label text-center d-block mb-2">
+          <i class="fas fa-calendar-alt me-2"></i>News Lookback Period
+        </label>
         <div id="slider"></div>
       </div>
     </div>
-    <div class="row mt-4">
-      {% if company_exists %}
-      <h1 class="text-center text-primary">{{ company_name }} ({{ ticker_symbol }})</h1>
-      {% else %}
-      <h1 class="text-center text-danger">{{ message }}</h1>
-      {% endif %}
+
+    <!-- Loading State -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Analyzing news sentiment and generating insights...</p>
     </div>
+
+    <!-- Error Message -->
+    {% if not company_exists and message %}
+    <div class="error-message">
+      <i class="fas fa-exclamation-triangle me-2"></i>{{ message }}
+    </div>
+    {% endif %}
+
+    <!-- Company Results -->
     {% if company_exists %}
+    <div class="company-header">
+      <div class="company-name">{{ company_name }}</div>
+      <div class="ticker-symbol">{{ ticker_symbol }}</div>
+    </div>
+
     <div class="row">
-      <div class="col-7">
-        <div class="card shadow bg-light">
-          <div class="row">
-            <h3 class="col card-title text-center">News ({{ news | length }})</h3>
+      <!-- News Section -->
+      <div class="col-lg-7">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-newspaper me-2"></i>News Analysis ({{ news | length }} articles)
+            </h3>
           </div>
-          {% for news_item in news %}
-          <div class="row mb-2 mx-1">
-            <div class="accordion">
-              <div class="accordion-item shadow bg-light">
-                <h2 class="accordion-header">
-                  <div class="row collapsed">
-                    <div class="col">
-                      <div class="row">
-                        <div class="col py-1">
-                          <h5 style="margin: 5px">
-                            {{ news_item['news_title'] }}
-                          </h5>
-                        </div>
-                        <div class="col-1 text-end d-flex align-items-center">
-                          <a href="{{ news_item['news_URL'] }}" style="font-size: 1.2rem;">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                          </a>
-                        </div>
-                      </div>
-                      <div class="row">
-                        <div class="col">
-                          <h6 style="margin: 5px">
-                            {{ news_item['how_long_ago'] }}
-                          </h6>
-                        </div>
-                        <div class="col">
-                          {% set label = news_item['overall_sentiment_score']['label'] %}
-                          {% if label == 'Positive' %}
-                          {% set button_style = 'success' %}
-                          {% elif label == 'Neutral' %}
-                          {% set button_style = 'warning' %}
-                          {% else %}
-                          {% set button_style = 'danger' %}
-                          {% endif %}
-                          <button type="button" class="btn btn-outline-{{ button_style }} border-0" style="margin-top: -20px;">
-                            <div class="row">
-                              <i class="col-2 bi bi-circle-fill"></i>
-                              <div class="col">
-                                <strong>
-                                  {{ news_item['overall_sentiment_score']['label'] +
-                                  news_item['overall_sentiment_score']['score'] }}
-                                </strong>
-                              </div>
-                            </div>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="col-2">
-                      <button class="accordion-button h-100 collapsed" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#news_{{ loop.index }}" aria-expanded="false"
-                        aria-controls="news_{{ loop.index }}">
-                      </button>
-                    </div>
+          <div class="card-body p-0">
+            {% for news_item in news %}
+            <div class="news-item">
+              <div class="news-header" data-bs-toggle="collapse" data-bs-target="#news_{{ loop.index }}">
+                <div class="news-title">{{ news_item['news_title'] }}</div>
+                <div class="news-meta">
+                  <div class="news-time">
+                    <i class="far fa-clock me-1"></i>{{ news_item['how_long_ago'] }}
                   </div>
-                </h2>
-                <div class="accordion-collapse collapse" id="news_{{ loop.index }}">
-                  <div class="accordion-body">
-                    <div class="row">
-                      <div class="col-3">
-                        <h6 style="padding: 6.75px; white-space: nowrap;">
-                          Sentiment Scores
-                        </h6>
-                      </div>
-                      <div class="col">
-                        <button type="button" class="btn btn-outline-success border-0">
-                          <div class="row">
-                            <i class="col-2 bi bi-circle-fill"></i>
-                            <div class="col">Positive</div>
-                          </div>
-                        </button>
-                        <button type="button" class="btn btn-outline-warning border-0">
-                          <div class="row">
-                            <i class="col-2 bi bi-circle-fill"></i>
-                            <div class="col">Neutral</div>
-                          </div>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger border-0">
-                          <div class="row">
-                            <i class="col-2 bi bi-circle-fill"></i>
-                            <div class="col">Negative</div>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                    {% for paragraph in news_item['paragraphs'] %}
-                    <p style="margin-top: 10px !important; margin-bottom: 0px !important;">{{ paragraph['content'] }}
-                    </p>
-                    <div class="row">
-                      <div class="col d-flex justify-content-end">
-                        <button type="button" class="btn btn-outline-success border-0">
-                          <div class="row">
-                            <i class="col-2 bi bi-circle-fill"></i>
-                            <div class="col">{{ paragraph['positive_score'] }}</div>
-                          </div>
-                        </button>
-                        <button type="button" class="btn btn-outline-warning border-0">
-                          <div class="row">
-                            <i class="col-2 bi bi-circle-fill"></i>
-                            <div class="col">{{ paragraph['neutral_score'] }}</div>
-                          </div>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger border-0">
-                          <div class="row">
-                            <i class="col-2 bi bi-circle-fill"></i>
-                            <div class="col">{{ paragraph['negative_score'] }}</div>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                    {% endfor %}
+                  <div class="d-flex align-items-center gap-2">
+                    {% set label = news_item['overall_sentiment_score']['label'] %}
+                    {% if label == 'Positive' %}
+                      <span class="sentiment-badge sentiment-positive">
+                        <i class="fas fa-arrow-up"></i>{{ label }} {{ news_item['overall_sentiment_score']['score'] }}
+                      </span>
+                    {% elif label == 'Neutral' %}
+                      <span class="sentiment-badge sentiment-neutral">
+                        <i class="fas fa-minus"></i>{{ label }} {{ news_item['overall_sentiment_score']['score'] }}
+                      </span>
+                    {% else %}
+                      <span class="sentiment-badge sentiment-negative">
+                        <i class="fas fa-arrow-down"></i>{{ label }} {{ news_item['overall_sentiment_score']['score'] }}
+                      </span>
+                    {% endif %}
+                    <a href="{{ news_item['news_URL'] }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                      <i class="fas fa-external-link-alt"></i>
+                    </a>
                   </div>
                 </div>
               </div>
+              <div class="collapse" id="news_{{ loop.index }}">
+                <div class="news-content">
+                  {% for paragraph in news_item['paragraphs'] %}
+                  <div class="paragraph">
+                    <div class="paragraph-text">{{ paragraph['content'] }}</div>
+                    <div class="sentiment-scores">
+                      <span class="score-badge score-positive">
+                        <i class="fas fa-arrow-up me-1"></i>{{ paragraph['positive_score'] }}
+                      </span>
+                      <span class="score-badge score-neutral">
+                        <i class="fas fa-minus me-1"></i>{{ paragraph['neutral_score'] }}
+                      </span>
+                      <span class="score-badge score-negative">
+                        <i class="fas fa-arrow-down me-1"></i>{{ paragraph['negative_score'] }}
+                      </span>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
             </div>
+            {% endfor %}
           </div>
-          {% endfor %}
         </div>
       </div>
-      <div class="col-5">
-        <div class="row">
-          <div class="card shadow bg-light">
-            <div class="row">
-              <h3 class="col card-title text-center">Recommended Actions</h3>
-            </div>
-            <div class="row font-weight-bold">
-              <div class="col d-flex align-items-center justify-content-center">
-                {% if recommended_action == 'Buy' %}
-                  <div class="text-success display-4">BUY</div>
-                {% elif recommended_action == 'Hold' %}
-                  <div class="text-warning display-4">HOLD</div>
-                {% else %}
-                  <div class="text-danger display-4">SELL</div>
-                {% endif %}
-              </div>
-              {% if recommended_action != 'Hold' %}
-              <div class="col d-flex align-items-center justify-content-center">
-                <div class="display-6">
-                  Confidence Index: {{ confidence_index }}
-                </div>
-              </div>
-              {% endif %}
-            </div>
+
+      <!-- Sidebar -->
+      <div class="col-lg-5">
+        <!-- Recommendation Card -->
+        <div class="card recommendation-card">
+          <div class="recommendation-title">
+            <i class="fas fa-lightbulb me-2"></i>AI Recommendation
           </div>
+          <div class="recommendation-action
+            {% if recommended_action == 'Buy' %} recommendation-buy
+            {% elif recommended_action == 'Hold' %} recommendation-hold
+            {% else %} recommendation-sell{% endif %}">
+            {{ recommended_action }}
+          </div>
+          {% if recommended_action != 'Hold' %}
+          <div class="confidence-index">
+            <i class="fas fa-chart-line me-2"></i>Confidence: {{ confidence_index }}
+          </div>
+          {% endif %}
         </div>
-        <div class="row mt-4">
-          <div class="card shadow bg-light">
-            <div class="row">
-              <h3 class="col card-title text-center">Stock Prices Chart</h3>
-            </div>
-            <div class="row mb-3">
-              <div class="col">
-                <div class="tradingview-widget-container">
-                  <div class="tradingview-widget-container__widget"></div>
-                  <script type="text/javascript"
-                    src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-                      {
-                        "width": "100%",
-                        "height": "610",
-                        "symbol": "{{ ticker_symbol }}",
-                        "interval": "D",
-                        "timezone": "Etc/UTC",
-                        "theme": "light",
-                        "style": "1",
-                        "locale": "en",
-                        "allow_symbol_change": true,
-                        "calendar": false,
-                        "support_host": "https://www.tradingview.com"
-                      }
-                    </script>
-                </div>
-              </div>
-            </div>
+
+        <!-- Stock Chart -->
+        <div class="chart-container mt-4">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-chart-area me-2"></i>Stock Price Chart
+            </h3>
+          </div>
+          <div class="tradingview-widget-container">
+            <div class="tradingview-widget-container__widget"></div>
+            <script type="text/javascript"
+              src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+              {
+                "width": "100%",
+                "height": "400",
+                "symbol": "{{ ticker_symbol }}",
+                "interval": "D",
+                "timezone": "Etc/UTC",
+                "theme": "light",
+                "style": "1",
+                "locale": "en",
+                "allow_symbol_change": true,
+                "calendar": false,
+                "support_host": "https://www.tradingview.com"
+              }
+            </script>
           </div>
         </div>
       </div>
@@ -261,16 +598,10 @@
     {% endif %}
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
-    integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
-    crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"
-    integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy"
-    crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.js"
-    integrity="sha512-g/feAizmeiVKSwvfW0Xk3ZHZqv5Zs8PEXEBKzL15pM0SevEvoX8eJ4yFWbqakvRj7vtw1Q97bLzEpG2IVWX0Mg=="
-    crossorigin="anonymous"
-    referrerpolicy="no-referrer"></script>
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.8.1/nouislider.min.js"></script>
 </body>
 
 </html>

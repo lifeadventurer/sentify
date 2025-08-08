@@ -76,8 +76,19 @@ def create_app() -> Flask:
     @app.route("/", methods=["POST"])
     def search():
         input_company = request.form["company"]
-        start_day = int(request.form["start"])
-        end_day = int(request.form["end"])
+
+        # Handle empty start/end values with defaults
+        try:
+            start_day = (
+                int(request.form["start"]) if request.form["start"] else 0
+            )
+        except (ValueError, KeyError):
+            start_day = 0
+
+        try:
+            end_day = int(request.form["end"]) if request.form["end"] else 2
+        except (ValueError, KeyError):
+            end_day = 2
 
         company_exists, [company_name, ticker_symbol] = (
             data.check_company_exists(input_company)
