@@ -1,28 +1,27 @@
-[tool.poetry]
-name = "Leveraging Sentiment Analysis on News for Stock Market Insights"
+[project]
+name = "sentify"
 version = "0.1.0"
-description = ""
-authors = ["lifeadventurer <life0adventurer@gmail.com>"]
+description = "Leveraging Sentiment Analysis on News for Stock Market Insights"
+authors = [
+    {name = "lifeadventurer", email = "life0adventurer@gmail.com"}
+]
 readme = "README.md"
-package-mode = false
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.3.1",
+    "torch>=2.8.0",
+    "transformers>=4.55.0",
+    "flask>=3.1.1",
+    "bs4>=0.0.2",
+    "yfinance>=0.2.65",
+    "pre-commit>=4.0.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-pandas = "^2.2.2"
-torch = "^2.7.0"
-transformers = "^4.42.4"
-flask = "^3.0.3"
-bs4 = "^0.0.2"
-yfinance = "^0.2.40"
-pre-commit = "^3.7.1"
+[dependency-groups]
+dev = [
+    "ruff>=0.12.8",
+]
 
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.5.2"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 80

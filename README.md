@@ -13,12 +13,12 @@ This project focuses on analyzing the sentiment of news articles to predict stoc
 Before you begin, make sure you have the following installed:
 
 - Python (version 3.11 or higher)
-- Poetry (recommended)
+- uv (recommended)
 - or pip
 
 ## Installation
 
-### Using Poetry (recommended)
+### Using uv (recommended)
 
 1. Clone the repository:
    ```shell
@@ -27,11 +27,11 @@ Before you begin, make sure you have the following installed:
    ```
 2. Install dependencies:
    ```shell
-   poetry install
+   uv sync
    ```
 3. Activate the virtual environment:
    ```shell
-   poetry env activate
+   source .venv/bin/activate # On Windows use `.venv\Scripts\activate`
    ```
 
 ### Using pip
@@ -56,7 +56,7 @@ Before you begin, make sure you have the following installed:
 To serve the Flask app locally, run:
 
 ```
-poetry run python3 src/main.py
+uv run python src/main.py
 ```
 
 ## Configuration
