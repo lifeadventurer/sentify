@@ -1,7 +1,5 @@
 ![](./sentify_logo.png)
 
-<hr>
-
 This project focuses on analyzing the sentiment of news articles to predict stock trends. It features a Flask-based web application designed to provide real-time financial data analysis and sentiment tracking.
 
 - **Input**: Users can enter a company name or ticker symbol to retrieve relevant news articles.
