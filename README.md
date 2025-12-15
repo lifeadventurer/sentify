@@ -19,15 +19,20 @@ Before you begin, make sure you have the following installed:
 ### Using uv (recommended)
 
 1. Clone the repository:
+
    ```shell
    git clone https://github.com/LifeAdventurer/sentify.git
    cd sentify
    ```
+
 2. Install dependencies:
+
    ```shell
    uv sync
    ```
+
 3. Activate the virtual environment:
+
    ```shell
    source .venv/bin/activate # On Windows use `.venv\Scripts\activate`
    ```
@@ -35,16 +40,21 @@ Before you begin, make sure you have the following installed:
 ### Using pip
 
 1. Clone the repository:
+
    ```shell
    git clone https://github.com/LifeAdventurer/sentify.git
    cd sentify
    ```
+
 2. Create and activate a virtual environment:
+
    ```shell
    python -m venv venv
    source venv/bin/activate # On Windows use `venv\Scripts\activate`
    ```
+
 3. Install dependencies:
+
    ```shell
    pip install -r requirements.txt
    ```
