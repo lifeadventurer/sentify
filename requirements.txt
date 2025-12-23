@@ -28,7 +28,7 @@ curl-cffi==0.13.0
     # via yfinance
 distlib==0.4.0
     # via virtualenv
-filelock==3.20.0
+filelock==3.20.1
     # via
     #   huggingface-hub
     #   torch
@@ -69,9 +69,9 @@ multitasking==0.0.12
     # via yfinance
 networkx==3.6.1
     # via torch
-nodeenv==1.9.1
+nodeenv==1.10.0
     # via pre-commit
-numpy==2.3.5
+numpy==2.4.0
     # via
     #   pandas
     #   transformers
@@ -129,7 +129,7 @@ platformdirs==4.5.1
     # via
     #   virtualenv
     #   yfinance
-pre-commit==4.5.0
+pre-commit==4.5.1
     # via sentify
 protobuf==6.33.2
     # via yfinance
@@ -153,14 +153,14 @@ requests==2.32.5
     #   huggingface-hub
     #   transformers
     #   yfinance
-ruff==0.14.9
+ruff==0.14.10
 safetensors==0.7.0
     # via transformers
 setuptools==80.9.0 ; python_full_version >= '3.12'
     # via torch
 six==1.17.0
     # via python-dateutil
-soupsieve==2.8
+soupsieve==2.8.1
     # via beautifulsoup4
 sympy==1.14.0
     # via torch
@@ -191,5 +191,5 @@ websockets==15.0.1
     # via yfinance
 werkzeug==3.1.4
     # via flask
-yfinance==0.2.66
+yfinance==1.0
     # via sentify
