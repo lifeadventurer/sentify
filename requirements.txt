@@ -8,7 +8,7 @@ blinker==1.9.0
     # via flask
 bs4==0.0.2
     # via sentify
-certifi==2025.11.12
+certifi==2026.1.4
     # via
     #   curl-cffi
     #   requests
@@ -28,7 +28,7 @@ curl-cffi==0.13.0
     # via yfinance
 distlib==0.4.0
     # via virtualenv
-filelock==3.20.1
+filelock==3.20.3
     # via
     #   huggingface-hub
     #   torch
@@ -38,7 +38,7 @@ flask==3.1.2
     # via sentify
 frozendict==2.4.7
     # via yfinance
-fsspec==2025.12.0
+fsspec==2026.1.0
     # via
     #   huggingface-hub
     #   torch
@@ -123,7 +123,7 @@ pandas==2.3.3
     # via
     #   sentify
     #   yfinance
-peewee==3.18.3
+peewee==3.19.0
     # via yfinance
 platformdirs==4.5.1
     # via
@@ -131,7 +131,7 @@ platformdirs==4.5.1
     #   yfinance
 pre-commit==4.5.1
     # via sentify
-protobuf==6.33.2
+protobuf==6.33.3
     # via yfinance
 pycparser==2.23 ; implementation_name != 'PyPy'
     # via cffi
@@ -153,7 +153,7 @@ requests==2.32.5
     #   huggingface-hub
     #   transformers
     #   yfinance
-ruff==0.14.10
+ruff==0.14.11
 safetensors==0.7.0
     # via transformers
 setuptools==80.9.0 ; python_full_version >= '3.12'
@@ -164,7 +164,7 @@ soupsieve==2.8.1
     # via beautifulsoup4
 sympy==1.14.0
     # via torch
-tokenizers==0.22.1
+tokenizers==0.22.2
     # via transformers
 torch==2.9.1
     # via sentify
@@ -183,13 +183,13 @@ typing-extensions==4.15.0
     #   torch
 tzdata==2025.3
     # via pandas
-urllib3==2.6.2
+urllib3==2.6.3
     # via requests
-virtualenv==20.35.4
+virtualenv==20.36.1
     # via pre-commit
 websockets==15.0.1
     # via yfinance
-werkzeug==3.1.4
+werkzeug==3.1.5
     # via flask
 yfinance==1.0
     # via sentify
