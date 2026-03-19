@@ -7,6 +7,8 @@ from flask import Flask, render_template, request
 from config.config import (
     CPU_COUNT,
     MAX_NEWS_LOOKBACK_DAYS,
+    NEWS_ARTICLE_CACHE_TTL_SECONDS,
+    NEWS_LIST_CACHE_TTL_SECONDS,
     SENTIMENT_CACHE_TTL_SECONDS,
     TIMESTAMP_FORMAT,
 )
@@ -127,6 +129,13 @@ def calculate_paragraph_score(news_item, current_timestamp):
 
 def create_app() -> Flask:
     app = Flask(__name__)
+    cache.cleanup_expired_json(
+        {
+            "news_urls": NEWS_LIST_CACHE_TTL_SECONDS,
+            "news_articles": NEWS_ARTICLE_CACHE_TTL_SECONDS,
+            "news_sentiment": SENTIMENT_CACHE_TTL_SECONDS,
+        }
+    )
 
     @app.route("/")
     def home():

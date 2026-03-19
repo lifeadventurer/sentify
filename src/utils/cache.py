@@ -13,12 +13,22 @@ def _cache_file_path(namespace: str, key: str) -> Path:
     return SENTIFY_CACHE_DIR / namespace / f"{digest}.json"
 
 
-def get_cached_json(namespace: str, key: str, ttl_seconds: int) -> Any | None:
-    cache_file = _cache_file_path(namespace, key)
-
+def _read_cache_payload(cache_file: Path) -> dict[str, Any] | None:
     try:
         payload = json.loads(cache_file.read_text())
     except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    return payload
+
+
+def get_cached_json(namespace: str, key: str, ttl_seconds: int) -> Any | None:
+    cache_file = _cache_file_path(namespace, key)
+    payload = _read_cache_payload(cache_file)
+    if payload is None:
         return None
 
     cached_at = payload.get("cached_at")
@@ -45,3 +55,42 @@ def set_cached_json(namespace: str, key: str, value: Any) -> None:
         temp_file.replace(cache_file)
     except OSError:
         return
+
+
+def cleanup_expired_json(ttl_by_namespace: dict[str, int]) -> None:
+    now = time.time()
+
+    for namespace, ttl_seconds in ttl_by_namespace.items():
+        namespace_dir = SENTIFY_CACHE_DIR / namespace
+        try:
+            cache_files = namespace_dir.iterdir()
+        except OSError:
+            continue
+
+        for cache_file in cache_files:
+            if not cache_file.is_file():
+                continue
+
+            payload = _read_cache_payload(cache_file)
+            if payload is None:
+                try:
+                    cache_file.unlink()
+                except OSError:
+                    pass
+                continue
+
+            cached_at = payload.get("cached_at")
+            if not isinstance(cached_at, int | float):
+                try:
+                    cache_file.unlink()
+                except OSError:
+                    pass
+                continue
+
+            if now - cached_at <= ttl_seconds:
+                continue
+
+            try:
+                cache_file.unlink()
+            except OSError:
+                pass
