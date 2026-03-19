@@ -4,8 +4,13 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 
-from config.config import TIMESTAMP_FORMAT, UTC_DIFFERENCE
-from utils import data
+from config.config import (
+    NEWS_ARTICLE_CACHE_TTL_SECONDS,
+    NEWS_LIST_CACHE_TTL_SECONDS,
+    TIMESTAMP_FORMAT,
+    UTC_DIFFERENCE,
+)
+from utils import cache, data
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -18,12 +23,38 @@ YAHOO_PREMIUM_MARKERS = (
 )
 
 
+def _get_news_list_cache_key(
+    ticker_symbol: str,
+    start_timestamp: str,
+    end_timestamp: str,
+    title_flag: bool,
+) -> str:
+    normalized_start = datetime.strptime(
+        start_timestamp, TIMESTAMP_FORMAT
+    ).date()
+    normalized_end = datetime.strptime(end_timestamp, TIMESTAMP_FORMAT).date()
+
+    return (
+        f"{ticker_symbol}:{normalized_start.isoformat()}:"
+        f"{normalized_end.isoformat()}:{title_flag}"
+    )
+
+
 def get_news_URLs(
     ticker_symbol: str,
     start_timestamp: str,
     end_timestamp: str,
     title_flag: bool = False,
 ) -> list:
+    cache_key = _get_news_list_cache_key(
+        ticker_symbol, start_timestamp, end_timestamp, title_flag
+    )
+    cached_news_urls = cache.get_cached_json(
+        "news_urls", cache_key, NEWS_LIST_CACHE_TTL_SECONDS
+    )
+    if cached_news_urls is not None:
+        return cached_news_urls
+
     API_URL = f"https://finance.yahoo.com/xhr/ncp?location=US&queryRef=newsAll&serviceKey=ncp_fin&listName={ticker_symbol}-news&lang=en-US&region=US"
 
     news_URLs = []
@@ -112,10 +143,20 @@ def get_news_URLs(
         key=lambda x: datetime.strptime(x["publish_date"], TIMESTAMP_FORMAT),
         reverse=True,
     )
+    cache.set_cached_json("news_urls", cache_key, sorted_news_URLs)
     return sorted_news_URLs
 
 
 def get_news_paragraphs(news_URL: str) -> tuple[list[str], str | None]:
+    cached_article = cache.get_cached_json(
+        "news_articles", news_URL, NEWS_ARTICLE_CACHE_TTL_SECONDS
+    )
+    if cached_article is not None:
+        return (
+            cached_article.get("paragraphs", []),
+            cached_article.get("article_status"),
+        )
+
     response = requests.get(news_URL, headers=headers)
     response_text = response.text
     response_text_lower = response_text.lower()
@@ -124,6 +165,11 @@ def get_news_paragraphs(news_URL: str) -> tuple[list[str], str | None]:
         marker in response_text_lower for marker in YAHOO_PREMIUM_MARKERS
     ):
         print(f"Skipping premium Yahoo Finance article: {news_URL}")
+        cache.set_cached_json(
+            "news_articles",
+            news_URL,
+            {"paragraphs": [], "article_status": "premium"},
+        )
         return [], "premium"
 
     soup = BeautifulSoup(response_text, "html.parser")
@@ -145,4 +191,9 @@ def get_news_paragraphs(news_URL: str) -> tuple[list[str], str | None]:
         print(f"No readable paragraphs found: {news_URL}")
         return [], "unavailable"
 
+    cache.set_cached_json(
+        "news_articles",
+        news_URL,
+        {"paragraphs": news_paragraphs, "article_status": None},
+    )
     return news_paragraphs, None

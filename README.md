@@ -74,6 +74,9 @@ export SENTIFY_MODEL_PATH="/path/to/local/model"
 export SENTIFY_MODEL_ID="marcev/financebert"
 export SENTIFY_MODEL_REVISION="<pinned-revision>"
 export SENTIFY_MODEL_LOCAL_FILES_ONLY=true
+export SENTIFY_CACHE_DIR="/path/to/cache"
+export SENTIFY_NEWS_LIST_CACHE_TTL_SECONDS=900
+export SENTIFY_NEWS_ARTICLE_CACHE_TTL_SECONDS=86400
 ```
 
 ## Configuration
@@ -97,6 +100,9 @@ CPU_COUNT = 2
 - `SENTIFY_MODEL_ID`: Hugging Face model id to use when no local path override is set.
 - `SENTIFY_MODEL_REVISION`: Optional pinned revision for reproducible Hugging Face loads.
 - `SENTIFY_MODEL_LOCAL_FILES_ONLY`: Forces local-only loading when set to `true`, `1`, `yes`, or `on`.
+- `SENTIFY_CACHE_DIR`: Directory for cached Yahoo news responses. Defaults to `.cache/sentify` in the repository root.
+- `SENTIFY_NEWS_LIST_CACHE_TTL_SECONDS`: How long ticker news query results stay fresh. Defaults to 900 seconds.
+- `SENTIFY_NEWS_ARTICLE_CACHE_TTL_SECONDS`: How long article body fetches stay fresh. Defaults to 86400 seconds.
 
 ## LICENSE
 

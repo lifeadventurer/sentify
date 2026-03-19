@@ -33,6 +33,7 @@ MANIFEST
 # OS
 .DS_Store
 Thumbs.db
+.cache/
 
 src/app/static/images/*
 src/data/files/companies_name_to_ticker_symbol.json
