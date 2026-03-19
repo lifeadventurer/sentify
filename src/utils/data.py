@@ -20,8 +20,16 @@ def generate_companies_to_ticker_symbol_json_file(
                 break
             companies_to_ticker_symbol[row["Name"]] = row["Symbol"]
 
-    with open(COMPANIES_TO_TICKER_SYMBOL_JSON_FILE, "w") as file:
-        json.dump(companies_to_ticker_symbol, file)
+    with open(
+        COMPANIES_TO_TICKER_SYMBOL_JSON_FILE, "w", encoding="utf-8"
+    ) as file:
+        json.dump(
+            companies_to_ticker_symbol,
+            file,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        file.write("\n")
 
     return companies_to_ticker_symbol
 

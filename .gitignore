@@ -35,3 +35,4 @@ MANIFEST
 Thumbs.db
 
 src/app/static/images/*
+src/data/files/companies_name_to_ticker_symbol.json
