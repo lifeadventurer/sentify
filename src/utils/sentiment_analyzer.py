@@ -1,13 +1,59 @@
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from config.config import (
+    SENTIMENT_MODEL_ID,
+    SENTIMENT_MODEL_LOCAL_FILES_ONLY,
+    SENTIMENT_MODEL_PATH,
+    SENTIMENT_MODEL_REVISION,
+)
 from config.constants import NEGATIVE, NEUTRAL, POSITIVE
 
-tokenizer = AutoTokenizer.from_pretrained("marcev/financebert")
-model = AutoModelForSequenceClassification.from_pretrained("marcev/financebert")
+
+def _get_model_source() -> str:
+    if SENTIMENT_MODEL_PATH:
+        return str(Path(SENTIMENT_MODEL_PATH).expanduser())
+
+    return SENTIMENT_MODEL_ID
+
+
+def _get_model_load_kwargs() -> dict[str, Any]:
+    kwargs: dict[str, Any] = {
+        "local_files_only": SENTIMENT_MODEL_LOCAL_FILES_ONLY,
+    }
+
+    if SENTIMENT_MODEL_REVISION and not SENTIMENT_MODEL_PATH:
+        kwargs["revision"] = SENTIMENT_MODEL_REVISION
+
+    return kwargs
+
+
+@lru_cache(maxsize=1)
+def get_tokenizer() -> AutoTokenizer:
+    return AutoTokenizer.from_pretrained(
+        _get_model_source(), **_get_model_load_kwargs()
+    )
+
+
+@lru_cache(maxsize=1)
+def get_model() -> AutoModelForSequenceClassification:
+    return AutoModelForSequenceClassification.from_pretrained(
+        _get_model_source(), **_get_model_load_kwargs()
+    )
+
+
+def preload_model() -> None:
+    get_tokenizer()
+    get_model()
 
 
 def predict(text: str) -> torch.Tensor:
+    tokenizer = get_tokenizer()
+    model = get_model()
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
     outputs = model(**inputs)
     predictions = torch.nn.functional.softmax(outputs.logits, dim=-1)

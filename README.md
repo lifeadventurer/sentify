@@ -67,6 +67,15 @@ To serve the Flask app locally, run:
 uv run python src/main.py
 ```
 
+Optional model overrides:
+
+```shell
+export SENTIFY_MODEL_PATH="/path/to/local/model"
+export SENTIFY_MODEL_ID="marcev/financebert"
+export SENTIFY_MODEL_REVISION="<pinned-revision>"
+export SENTIFY_MODEL_LOCAL_FILES_ONLY=true
+```
+
 ## Configuration
 
 To configure the application, update the `config.py` file in the `src/config` directory. Key parameters include:
@@ -84,6 +93,10 @@ CPU_COUNT = 2
 - `UTC_DIFFERENCE`: The difference in hours between local time and UTC.
 - `MAX_NEWS_LOOKBACK_DAYS`: The max number of days to look back when fetching news articles.
 - `CPU_COUNT`: The number of CPUs to be used for multiprocessing.
+- `SENTIFY_MODEL_PATH`: Local model directory override. If set, it takes precedence over the remote model id.
+- `SENTIFY_MODEL_ID`: Hugging Face model id to use when no local path override is set.
+- `SENTIFY_MODEL_REVISION`: Optional pinned revision for reproducible Hugging Face loads.
+- `SENTIFY_MODEL_LOCAL_FILES_ONLY`: Forces local-only loading when set to `true`, `1`, `yes`, or `on`.
 
 ## LICENSE
 

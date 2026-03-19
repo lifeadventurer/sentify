@@ -116,6 +116,7 @@ def create_app() -> Flask:
                 for news_item in news:
                     args.append((news_item, current_timestamp))
 
+                sentiment_analyzer.preload_model()
                 with Pool(CPU_COUNT) as pool:
                     results = pool.starmap(calculate_paragraph_score, args)
                 for index, result in enumerate(results):
