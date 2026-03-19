@@ -267,6 +267,7 @@
         border-radius: 8px;
         font-size: 0.75rem;
         font-weight: 500;
+        border: 1px solid transparent;
       }
 
       .score-positive {
@@ -282,6 +283,12 @@
       .score-negative {
         background: rgba(239, 68, 68, 0.1);
         color: var(--danger-color);
+      }
+
+      .score-top {
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+        border-color: rgba(37, 99, 235, 0.35);
+        transform: translateY(-1px);
       }
 
       .recommendation-card {
@@ -586,20 +593,28 @@
                     </div>
                     {% else %}
                     {% for paragraph in news_item['paragraphs'] %}
+                    {% set positive_score = paragraph['positive_score']|float %}
+                    {% set neutral_score = paragraph['neutral_score']|float %}
+                    {% set negative_score = paragraph['negative_score']|float %}
+                    {% set max_score = [
+                      positive_score,
+                      neutral_score,
+                      negative_score
+                    ]|max %}
                     <div class="paragraph">
                       <div class="paragraph-text">
                         {{ paragraph['content'] }}
                       </div>
                       <div class="sentiment-scores">
-                        <span class="score-badge score-positive">
+                        <span class="score-badge score-positive {% if positive_score == max_score %}score-top{% endif %}">
                           <i class="fas fa-arrow-up me-1"></i>{{
                           paragraph['positive_score'] }}
                         </span>
-                        <span class="score-badge score-neutral">
+                        <span class="score-badge score-neutral {% if neutral_score == max_score %}score-top{% endif %}">
                           <i class="fas fa-minus me-1"></i>{{
                           paragraph['neutral_score'] }}
                         </span>
-                        <span class="score-badge score-negative">
+                        <span class="score-badge score-negative {% if negative_score == max_score %}score-top{% endif %}">
                           <i class="fas fa-arrow-down me-1"></i>{{
                           paragraph['negative_score'] }}
                         </span>
