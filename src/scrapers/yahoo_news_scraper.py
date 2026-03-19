@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -9,6 +10,12 @@ from utils import data
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
 }
+
+YAHOO_PREMIUM_MARKERS = (
+    '"milestone":"premium-premiumnews"',
+    '"yhighvalueaction":"premium-premiumnews"',
+    '"pl2":"unspecified-block_all"',
+)
 
 
 def get_news_URLs(
@@ -108,10 +115,18 @@ def get_news_URLs(
     return sorted_news_URLs
 
 
-def get_news_paragraphs(news_URL: str) -> list[str]:
+def get_news_paragraphs(news_URL: str) -> tuple[list[str], str | None]:
     response = requests.get(news_URL, headers=headers)
+    response_text = response.text
+    response_text_lower = response_text.lower()
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    if urlparse(news_URL).netloc == "finance.yahoo.com" and any(
+        marker in response_text_lower for marker in YAHOO_PREMIUM_MARKERS
+    ):
+        print(f"Skipping premium Yahoo Finance article: {news_URL}")
+        return [], "premium"
+
+    soup = BeautifulSoup(response_text, "html.parser")
 
     news_body = soup.select_one(".body")
 
@@ -124,5 +139,10 @@ def get_news_paragraphs(news_URL: str) -> list[str]:
 
     else:
         print("No element found with class name: body")
+        return [], "unavailable"
 
-    return news_paragraphs
+    if not news_paragraphs:
+        print(f"No readable paragraphs found: {news_URL}")
+        return [], "unavailable"
+
+    return news_paragraphs, None

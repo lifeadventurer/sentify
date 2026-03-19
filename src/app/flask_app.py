@@ -10,23 +10,11 @@ from utils import action, data, sentiment_analyzer, time
 
 def calculate_paragraph_score(news_item, current_timestamp):
     paragraphs_with_sentiment_scores = []
-    paragraphs = yahoo_news_scraper.get_news_paragraphs(news_item["news_URL"])
-
-    for paragraph in paragraphs:
-        negative_score, neutral_score, positive_score = (
-            sentiment_analyzer.get_sentiment_score(paragraph)
-        )
-        paragraphs_with_sentiment_scores.append(
-            {
-                "content": paragraph,
-                "positive_score": f"{positive_score: .3f}",
-                "neutral_score": f"{neutral_score: .3f}",
-                "negative_score": f"{negative_score: .3f}",
-            }
-        )
+    paragraphs, article_status = yahoo_news_scraper.get_news_paragraphs(
+        news_item["news_URL"]
+    )
 
     news = {}
-    news["paragraphs"] = paragraphs_with_sentiment_scores
 
     current_time_seconds = time.convert_timestamp_to_seconds(
         TIMESTAMP_FORMAT, current_timestamp
@@ -42,24 +30,44 @@ def calculate_paragraph_score(news_item, current_timestamp):
         )
         news["how_long_ago"] = how_long_ago
 
-        # News overall sentiment score
-        (
-            sentiment_label,
-            highest_sentiment_score,
-            corresponding_sentiment_score,
-        ) = sentiment_analyzer.get_overall_sentiment_score(
-            paragraphs_with_sentiment_scores
+    if not paragraphs:
+        news["paragraphs"] = []
+        news["article_status"] = article_status or "unavailable"
+        return (news, sentiment_scores_of_new)
+
+    for paragraph in paragraphs:
+        negative_score, neutral_score, positive_score = (
+            sentiment_analyzer.get_sentiment_score(paragraph)
+        )
+        paragraphs_with_sentiment_scores.append(
+            {
+                "content": paragraph,
+                "positive_score": f"{positive_score: .3f}",
+                "neutral_score": f"{neutral_score: .3f}",
+                "negative_score": f"{negative_score: .3f}",
+            }
         )
 
-        news["overall_sentiment_score"] = {
-            "label": sentiment_label,
-            "score": f"{highest_sentiment_score: .3f}",
-        }
-        sentiment_scores_of_new = {
-            "label": sentiment_label,
-            "highest_score": highest_sentiment_score,
-            "corresponding_score": corresponding_sentiment_score,
-        }
+    news["paragraphs"] = paragraphs_with_sentiment_scores
+
+    # News overall sentiment score
+    (
+        sentiment_label,
+        highest_sentiment_score,
+        corresponding_sentiment_score,
+    ) = sentiment_analyzer.get_overall_sentiment_score(
+        paragraphs_with_sentiment_scores
+    )
+
+    news["overall_sentiment_score"] = {
+        "label": sentiment_label,
+        "score": f"{highest_sentiment_score: .3f}",
+    }
+    sentiment_scores_of_new = {
+        "label": sentiment_label,
+        "highest_score": highest_sentiment_score,
+        "corresponding_score": corresponding_sentiment_score,
+    }
 
     return (news, sentiment_scores_of_new)
 
@@ -119,9 +127,10 @@ def create_app() -> Flask:
                 sentiment_analyzer.preload_model()
                 with Pool(CPU_COUNT) as pool:
                     results = pool.starmap(calculate_paragraph_score, args)
-                for index, result in enumerate(results):
+
+                for news_item, result in zip(news, results, strict=True):
                     result_news, sentiment_scores_of_new = result
-                    news[index].update(result_news)
+                    news_item.update(result_news)
                     if sentiment_scores_of_new:
                         sentiment_scores_of_news.append(sentiment_scores_of_new)
 

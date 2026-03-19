@@ -530,6 +530,15 @@
                       news_item['how_long_ago'] }}
                     </div>
                     <div class="d-flex align-items-center gap-2">
+                      {% if news_item.get('article_status') == 'premium' %}
+                      <span class="sentiment-badge sentiment-neutral">
+                        <i class="fas fa-lock"></i>Premium
+                      </span>
+                      {% elif news_item.get('article_status') == 'unavailable' %}
+                      <span class="sentiment-badge sentiment-neutral">
+                        <i class="fas fa-file-circle-xmark"></i>Unavailable
+                      </span>
+                      {% else %}
                       {% set label =
                       news_item['overall_sentiment_score']['label'] %} {% if
                       label == 'Positive' %}
@@ -548,6 +557,7 @@
                         news_item['overall_sentiment_score']['score'] }}
                       </span>
                       {% endif %}
+                      {% endif %}
                       <a
                         href="{{ news_item['news_URL'] }}"
                         target="_blank"
@@ -560,6 +570,21 @@
                 </div>
                 <div class="collapse" id="news_{{ loop.index }}">
                   <div class="news-content">
+                    {% if news_item.get('article_status') == 'premium' %}
+                    <div class="paragraph">
+                      <div class="paragraph-text">
+                        This Yahoo Finance article is premium content, so its
+                        paragraphs could not be analyzed.
+                      </div>
+                    </div>
+                    {% elif news_item.get('article_status') == 'unavailable' %}
+                    <div class="paragraph">
+                      <div class="paragraph-text">
+                        The article is still listed here, but its body could not
+                        be extracted for sentiment analysis.
+                      </div>
+                    </div>
+                    {% else %}
                     {% for paragraph in news_item['paragraphs'] %}
                     <div class="paragraph">
                       <div class="paragraph-text">
@@ -581,6 +606,7 @@
                       </div>
                     </div>
                     {% endfor %}
+                    {% endif %}
                   </div>
                 </div>
               </div>
