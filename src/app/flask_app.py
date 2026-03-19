@@ -1,15 +1,35 @@
+import json
 from datetime import datetime, timedelta
 from multiprocessing import Pool
 
 from flask import Flask, render_template, request
 
-from config.config import CPU_COUNT, MAX_NEWS_LOOKBACK_DAYS, TIMESTAMP_FORMAT
+from config.config import (
+    CPU_COUNT,
+    MAX_NEWS_LOOKBACK_DAYS,
+    SENTIMENT_CACHE_TTL_SECONDS,
+    TIMESTAMP_FORMAT,
+)
 from scrapers import yahoo_news_scraper
-from utils import action, data, sentiment_analyzer, time
+from utils import action, cache, data, sentiment_analyzer, time
+
+
+def _get_sentiment_cache_key(news_url: str) -> str:
+    return json.dumps(
+        {
+            "news_url": news_url,
+            "model": sentiment_analyzer.get_model_cache_identity(),
+        },
+        sort_keys=True,
+    )
 
 
 def calculate_paragraph_score(news_item, current_timestamp):
     paragraphs_with_sentiment_scores = []
+    cache_key = _get_sentiment_cache_key(news_item["news_URL"])
+    cached_sentiment = cache.get_cached_json(
+        "news_sentiment", cache_key, SENTIMENT_CACHE_TTL_SECONDS
+    )
     paragraphs, article_status = yahoo_news_scraper.get_news_paragraphs(
         news_item["news_URL"]
     )
@@ -31,9 +51,32 @@ def calculate_paragraph_score(news_item, current_timestamp):
         news["how_long_ago"] = how_long_ago
 
     if not paragraphs:
+        if cached_sentiment is not None and article_status != "premium":
+            news["paragraphs"] = cached_sentiment.get("paragraphs", [])
+            news["overall_sentiment_score"] = cached_sentiment.get(
+                "overall_sentiment_score", {}
+            )
+            return (
+                news,
+                cached_sentiment.get("sentiment_scores_of_new", {}),
+            )
+
         news["paragraphs"] = []
         news["article_status"] = article_status or "unavailable"
         return (news, sentiment_scores_of_new)
+
+    if (
+        cached_sentiment is not None
+        and cached_sentiment.get("article_paragraphs") == paragraphs
+    ):
+        news["paragraphs"] = cached_sentiment.get("paragraphs", [])
+        news["overall_sentiment_score"] = cached_sentiment.get(
+            "overall_sentiment_score", {}
+        )
+        return (
+            news,
+            cached_sentiment.get("sentiment_scores_of_new", {}),
+        )
 
     for paragraph in paragraphs:
         negative_score, neutral_score, positive_score = (
@@ -68,6 +111,16 @@ def calculate_paragraph_score(news_item, current_timestamp):
         "highest_score": highest_sentiment_score,
         "corresponding_score": corresponding_sentiment_score,
     }
+    cache.set_cached_json(
+        "news_sentiment",
+        cache_key,
+        {
+            "article_paragraphs": paragraphs,
+            "paragraphs": paragraphs_with_sentiment_scores,
+            "overall_sentiment_score": news["overall_sentiment_score"],
+            "sentiment_scores_of_new": sentiment_scores_of_new,
+        },
+    )
 
     return (news, sentiment_scores_of_new)
 

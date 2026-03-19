@@ -1,3 +1,4 @@
+import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,19 @@ def _get_model_load_kwargs() -> dict[str, Any]:
         kwargs["revision"] = SENTIMENT_MODEL_REVISION
 
     return kwargs
+
+
+def get_model_cache_identity() -> str:
+    return json.dumps(
+        {
+            "model_source": _get_model_source(),
+            "model_revision": (
+                SENTIMENT_MODEL_REVISION if not SENTIMENT_MODEL_PATH else ""
+            ),
+            "local_files_only": SENTIMENT_MODEL_LOCAL_FILES_ONLY,
+        },
+        sort_keys=True,
+    )
 
 
 @lru_cache(maxsize=1)
