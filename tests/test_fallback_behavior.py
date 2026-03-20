@@ -366,6 +366,7 @@ class FallbackBehaviorTests(unittest.TestCase):
         self.assertEqual(0.9, sentiment_scores["highest_score"])
         self.assertEqual(0.1, sentiment_scores["corresponding_score"])
         self.assertEqual(86400, sentiment_scores["age_seconds"])
+        self.assertEqual(1, sentiment_scores["content_length_words"])
 
     def test_empty_cached_sentiment_summary_stays_empty(self) -> None:
         news_item = {

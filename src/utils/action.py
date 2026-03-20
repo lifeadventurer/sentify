@@ -1,6 +1,12 @@
 from math import pow
 
-from config.config import RECENCY_WEIGHT_FLOOR, RECENCY_WEIGHT_HALF_LIFE_HOURS
+from config.config import (
+    CONTENT_LENGTH_WEIGHT_MAX,
+    CONTENT_LENGTH_WEIGHT_MIN,
+    CONTENT_LENGTH_WEIGHT_TARGET_WORDS,
+    RECENCY_WEIGHT_FLOOR,
+    RECENCY_WEIGHT_HALF_LIFE_HOURS,
+)
 from config.constants import NEGATIVE, NEUTRAL, POSITIVE
 
 
@@ -23,6 +29,32 @@ def get_recency_weight(age_seconds: float | int | None) -> float:
     return RECENCY_WEIGHT_FLOOR + (1 - RECENCY_WEIGHT_FLOOR) * decay
 
 
+def get_content_length_weight(
+    content_length_words: float | int | None,
+) -> float:
+    if content_length_words is None:
+        return 1.0
+
+    if CONTENT_LENGTH_WEIGHT_TARGET_WORDS <= 0:
+        return 1.0
+
+    normalized_content_length = max(float(content_length_words), 0.0)
+    progress = min(
+        normalized_content_length / CONTENT_LENGTH_WEIGHT_TARGET_WORDS,
+        1.0,
+    )
+    return (
+        CONTENT_LENGTH_WEIGHT_MIN
+        + (CONTENT_LENGTH_WEIGHT_MAX - CONTENT_LENGTH_WEIGHT_MIN) * progress
+    )
+
+
+def get_article_weight(item: dict) -> float:
+    return get_recency_weight(item.get("age_seconds")) * (
+        get_content_length_weight(item.get("content_length_words"))
+    )
+
+
 def get_recommended_action(
     sentiment_scores_of_news: list[dict],
 ) -> tuple[str, float]:
@@ -35,12 +67,12 @@ def get_recommended_action(
         if sentiment_label == NEUTRAL:
             continue
 
-        recency_weight = get_recency_weight(item.get("age_seconds"))
-        total_weight += recency_weight
+        article_weight = get_article_weight(item)
+        total_weight += article_weight
         if sentiment_label == POSITIVE:
-            positive_weight += recency_weight
+            positive_weight += article_weight
         elif sentiment_label == NEGATIVE:
-            negative_weight += recency_weight
+            negative_weight += article_weight
 
     if positive_weight >= negative_weight:
         action = POSITIVE
@@ -54,28 +86,28 @@ def get_recommended_action(
         if sentiment_label == NEUTRAL:
             continue
 
-        recency_weight = get_recency_weight(item.get("age_seconds"))
+        article_weight = get_article_weight(item)
         if sentiment_label == POSITIVE:
             if action == POSITIVE:
-                action_column_score += recency_weight * highest_sentiment_score
+                action_column_score += article_weight * highest_sentiment_score
                 correspond_column_score -= (
-                    recency_weight * corresponding_sentiment_score
+                    article_weight * corresponding_sentiment_score
                 )
             else:
-                action_column_score -= recency_weight * highest_sentiment_score
+                action_column_score -= article_weight * highest_sentiment_score
                 correspond_column_score += (
-                    recency_weight * corresponding_sentiment_score
+                    article_weight * corresponding_sentiment_score
                 )
         if sentiment_label == NEGATIVE:
             if action == NEGATIVE:
-                action_column_score += recency_weight * highest_sentiment_score
+                action_column_score += article_weight * highest_sentiment_score
                 correspond_column_score -= (
-                    recency_weight * corresponding_sentiment_score
+                    article_weight * corresponding_sentiment_score
                 )
             else:
-                action_column_score -= recency_weight * highest_sentiment_score
+                action_column_score -= article_weight * highest_sentiment_score
                 correspond_column_score += (
-                    recency_weight * corresponding_sentiment_score
+                    article_weight * corresponding_sentiment_score
                 )
 
     if action == POSITIVE:

@@ -28,19 +28,53 @@ def _get_sentiment_cache_key(news_url: str) -> str:
     )
 
 
+def _get_content_length_words(paragraphs) -> int | None:
+    if not paragraphs:
+        return None
+
+    content_length_words = 0
+    for paragraph in paragraphs:
+        content = paragraph
+        if isinstance(paragraph, dict):
+            content = paragraph.get("content", "")
+
+        normalized_content = str(content).strip()
+        if normalized_content:
+            content_length_words += len(normalized_content.split())
+
+    return content_length_words
+
+
+def _get_cached_content_length_words(
+    cached_sentiment: dict | None,
+) -> int | None:
+    if not cached_sentiment:
+        return None
+
+    return _get_content_length_words(
+        cached_sentiment.get("article_paragraphs")
+        or cached_sentiment.get("paragraphs")
+    )
+
+
 def calculate_paragraph_score(
     news_item,
     current_timestamp,
     age_reference_timestamp=None,
     model_available=True,
 ):
-    def _build_sentiment_summary(sentiment_scores: dict) -> dict:
+    def _build_sentiment_summary(
+        sentiment_scores: dict,
+        content_length_words: int | None = None,
+    ) -> dict:
         if not sentiment_scores:
             return {}
 
         summary = dict(sentiment_scores)
         if age_seconds is not None:
             summary["age_seconds"] = age_seconds
+        if content_length_words is not None:
+            summary["content_length_words"] = content_length_words
         return summary
 
     paragraphs_with_sentiment_scores = []
@@ -83,7 +117,8 @@ def calculate_paragraph_score(
             return (
                 news,
                 _build_sentiment_summary(
-                    stale_cached_sentiment.get("sentiment_scores_of_new", {})
+                    stale_cached_sentiment.get("sentiment_scores_of_new", {}),
+                    _get_cached_content_length_words(stale_cached_sentiment),
                 ),
             )
 
@@ -108,7 +143,8 @@ def calculate_paragraph_score(
         return (
             news,
             _build_sentiment_summary(
-                reusable_cached_sentiment.get("sentiment_scores_of_new", {})
+                reusable_cached_sentiment.get("sentiment_scores_of_new", {}),
+                _get_cached_content_length_words(reusable_cached_sentiment),
             ),
         )
 
@@ -131,6 +167,7 @@ def calculate_paragraph_score(
         )
 
     news["paragraphs"] = paragraphs_with_sentiment_scores
+    content_length_words = _get_content_length_words(paragraphs)
 
     # News overall sentiment score
     (
@@ -149,6 +186,7 @@ def calculate_paragraph_score(
         "label": sentiment_label,
         "highest_score": highest_sentiment_score,
         "corresponding_score": corresponding_sentiment_score,
+        "content_length_words": content_length_words,
     }
     cache.set_cached_json(
         "news_sentiment",
@@ -161,7 +199,13 @@ def calculate_paragraph_score(
         },
     )
 
-    return (news, _build_sentiment_summary(sentiment_scores_of_new))
+    return (
+        news,
+        _build_sentiment_summary(
+            sentiment_scores_of_new,
+            content_length_words,
+        ),
+    )
 
 
 def create_app() -> Flask:
