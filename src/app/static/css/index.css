@@ -62,7 +62,7 @@ body {
 
 .top-controls-row {
   display: grid;
-  grid-template-columns: minmax(240px, 380px) minmax(280px, 1fr) auto;
+  grid-template-columns: minmax(320px, 1.15fr) minmax(260px, 1fr) auto;
   gap: 1rem;
   align-items: center;
 }
@@ -71,7 +71,7 @@ body {
   display: flex;
   flex-wrap: nowrap;
   align-items: stretch;
-  max-width: 380px;
+  max-width: none;
   margin: 0;
 }
 
@@ -187,6 +187,7 @@ body {
   align-items: center;
   gap: 1rem;
   min-width: 0;
+  max-width: 500px;
 }
 
 .slider-inline-label {
@@ -685,7 +686,7 @@ body {
 
 @media (max-width: 1200px) {
   .top-controls-row {
-    grid-template-columns: minmax(260px, 1fr) auto;
+    grid-template-columns: minmax(300px, 1.1fr) auto;
     align-items: start;
   }
 
