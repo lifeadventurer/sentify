@@ -1,0 +1,18 @@
+{% macro recommendation_card(title, recommended_action, confidence_index, classes) -%}
+<div class="{{ classes }}">
+  <div class="recommendation-title">{{ title }}</div>
+  <div
+    data-recommendation-action
+    class="recommendation-action {% if recommended_action == 'Buy' %} recommendation-buy {% elif recommended_action == 'Hold' %} recommendation-hold {% else %} recommendation-sell{% endif %}"
+  >
+    {{ recommended_action }}
+  </div>
+  <div
+    data-confidence-index
+    class="confidence-index"
+    {% if recommended_action == "Hold" %}style="display: none"{% endif %}
+  >
+    <i class="fas fa-chart-line me-2"></i>Confidence: {{ confidence_index }}
+  </div>
+</div>
+{%- endmacro %}
