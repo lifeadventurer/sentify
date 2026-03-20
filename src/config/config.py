@@ -55,6 +55,17 @@ def _get_int_env(var_name: str, default: int) -> int:
         return default
 
 
+def _get_float_env(var_name: str, default: float) -> float:
+    value = os.getenv(var_name)
+    if value is None:
+        return default
+
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
+
 def _get_cache_retention_env(var_name: str, freshness_ttl: int) -> int:
     retention_ttl = _get_int_env(var_name, freshness_ttl)
     return max(retention_ttl, freshness_ttl)
@@ -92,6 +103,14 @@ NEWS_ARTICLE_CACHE_RETENTION_SECONDS = _get_cache_retention_env(
 SENTIMENT_CACHE_RETENTION_SECONDS = _get_cache_retention_env(
     "SENTIFY_SENTIMENT_CACHE_RETENTION_SECONDS",
     max(SENTIMENT_CACHE_TTL_SECONDS, DEFAULT_CACHE_RETENTION_SECONDS),
+)
+RECENCY_WEIGHT_HALF_LIFE_HOURS = max(
+    _get_float_env("SENTIFY_RECENCY_WEIGHT_HALF_LIFE_HOURS", 168.0),
+    0.0,
+)
+RECENCY_WEIGHT_FLOOR = min(
+    max(_get_float_env("SENTIFY_RECENCY_WEIGHT_FLOOR", 0.2), 0.0),
+    1.0,
 )
 
 DEFAULT_SENTIMENT_MODEL_ID = "marcev/financebert"

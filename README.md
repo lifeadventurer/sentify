@@ -84,6 +84,8 @@ export SENTIFY_SENTIMENT_CACHE_TTL_SECONDS=5184000
 export SENTIFY_NEWS_LIST_CACHE_RETENTION_SECONDS=5184000
 export SENTIFY_NEWS_ARTICLE_CACHE_RETENTION_SECONDS=5184000
 export SENTIFY_SENTIMENT_CACHE_RETENTION_SECONDS=5184000
+export SENTIFY_RECENCY_WEIGHT_HALF_LIFE_HOURS=168
+export SENTIFY_RECENCY_WEIGHT_FLOOR=0.2
 ```
 
 Default behavior:
@@ -128,6 +130,8 @@ CPU_COUNT = 2
 - `SENTIFY_NEWS_LIST_CACHE_RETENTION_SECONDS`: How long news-list cache files stay on disk for stale fallback. Defaults to at least `MAX_NEWS_LOOKBACK_DAYS * 86400` seconds and never below the freshness TTL.
 - `SENTIFY_NEWS_ARTICLE_CACHE_RETENTION_SECONDS`: How long cached article bodies stay on disk for stale fallback. Defaults to at least `MAX_NEWS_LOOKBACK_DAYS * 86400` seconds and never below the freshness TTL.
 - `SENTIFY_SENTIMENT_CACHE_RETENTION_SECONDS`: How long cached sentiment results stay on disk for stale fallback. Defaults to at least `MAX_NEWS_LOOKBACK_DAYS * 86400` seconds and never below the freshness TTL.
+- `SENTIFY_RECENCY_WEIGHT_HALF_LIFE_HOURS`: Half-life for recency weighting in the recommendation score. More recent news gets more weight on a smooth exponential curve. Defaults to `168` hours (7 days).
+- `SENTIFY_RECENCY_WEIGHT_FLOOR`: Minimum weight applied to older news so it still contributes to the recommendation. Defaults to `0.2`.
 
 ## LICENSE
 

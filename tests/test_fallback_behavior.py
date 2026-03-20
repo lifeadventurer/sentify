@@ -362,10 +362,91 @@ class FallbackBehaviorTests(unittest.TestCase):
             news["overall_sentiment_score"],
         )
         self.assertEqual(cached_sentiment["paragraphs"], news["paragraphs"])
-        self.assertEqual(
-            cached_sentiment["sentiment_scores_of_new"],
-            sentiment_scores,
+        self.assertEqual("positive", sentiment_scores["label"])
+        self.assertEqual(0.9, sentiment_scores["highest_score"])
+        self.assertEqual(0.1, sentiment_scores["corresponding_score"])
+        self.assertEqual(86400, sentiment_scores["age_seconds"])
+
+    def test_empty_cached_sentiment_summary_stays_empty(self) -> None:
+        news_item = {
+            "news_URL": "https://example.com/legacy-sentiment",
+            "publish_date": "2026-03-12T00:00:00Z",
+        }
+        current_timestamp = "2026-03-13T00:00:00Z"
+        cache_key = flask_app._get_sentiment_cache_key(news_item["news_URL"])
+        cache.set_cached_json(
+            "news_sentiment",
+            cache_key,
+            {
+                "paragraphs": [],
+                "overall_sentiment_score": {},
+                "sentiment_scores_of_new": {},
+            },
         )
+        self._age_cache(
+            "news_sentiment",
+            cache_key,
+            flask_app.SENTIMENT_CACHE_TTL_SECONDS + 1,
+        )
+
+        with patch.object(
+            yahoo_news_scraper,
+            "get_news_paragraphs",
+            return_value=([], "unavailable"),
+        ):
+            _news, sentiment_scores = flask_app.calculate_paragraph_score(
+                news_item,
+                current_timestamp,
+                model_available=False,
+            )
+
+        self.assertEqual({}, sentiment_scores)
+
+    def test_age_seconds_uses_actual_now_not_window_end(self) -> None:
+        news_item = {
+            "news_URL": "https://example.com/older-window-sentiment",
+            "publish_date": "2026-03-12T00:00:00Z",
+        }
+        current_timestamp = "2026-03-13T00:00:00Z"
+        actual_timestamp = "2026-03-23T00:00:00Z"
+        cache_key = flask_app._get_sentiment_cache_key(news_item["news_URL"])
+        cache.set_cached_json(
+            "news_sentiment",
+            cache_key,
+            {
+                "paragraphs": [
+                    {"content": "cached", "positive_score": " 0.900"}
+                ],
+                "overall_sentiment_score": {
+                    "label": "positive",
+                    "score": " 0.900",
+                },
+                "sentiment_scores_of_new": {
+                    "label": "positive",
+                    "highest_score": 0.9,
+                    "corresponding_score": 0.1,
+                },
+            },
+        )
+        self._age_cache(
+            "news_sentiment",
+            cache_key,
+            flask_app.SENTIMENT_CACHE_TTL_SECONDS + 1,
+        )
+
+        with patch.object(
+            yahoo_news_scraper,
+            "get_news_paragraphs",
+            return_value=([], "unavailable"),
+        ):
+            _news, sentiment_scores = flask_app.calculate_paragraph_score(
+                news_item,
+                current_timestamp,
+                actual_timestamp,
+                model_available=False,
+            )
+
+        self.assertEqual(11 * 86400, sentiment_scores["age_seconds"])
 
     def test_model_cache_identity_ignores_offline_mode(self) -> None:
         with patch.object(

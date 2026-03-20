@@ -31,8 +31,18 @@ def _get_sentiment_cache_key(news_url: str) -> str:
 def calculate_paragraph_score(
     news_item,
     current_timestamp,
+    age_reference_timestamp=None,
     model_available=True,
 ):
+    def _build_sentiment_summary(sentiment_scores: dict) -> dict:
+        if not sentiment_scores:
+            return {}
+
+        summary = dict(sentiment_scores)
+        if age_seconds is not None:
+            summary["age_seconds"] = age_seconds
+        return summary
+
     paragraphs_with_sentiment_scores = []
     cache_key = _get_sentiment_cache_key(news_item["news_URL"])
     cached_sentiment = cache.get_cached_json(
@@ -50,18 +60,18 @@ def calculate_paragraph_score(
 
     news = {}
 
-    current_time_seconds = time.convert_timestamp_to_seconds(
-        TIMESTAMP_FORMAT, current_timestamp
+    age_reference_seconds = time.convert_timestamp_to_seconds(
+        TIMESTAMP_FORMAT, age_reference_timestamp or current_timestamp
     )
     publish_time_seconds = time.convert_timestamp_to_seconds(
         TIMESTAMP_FORMAT, news_item["publish_date"]
     )
 
+    age_seconds = None
     sentiment_scores_of_new = {}
-    if current_time_seconds and publish_time_seconds:
-        how_long_ago = time.format_time_difference(
-            current_time_seconds - publish_time_seconds
-        )
+    if age_reference_seconds and publish_time_seconds:
+        age_seconds = max(age_reference_seconds - publish_time_seconds, 0)
+        how_long_ago = time.format_time_difference(age_seconds)
         news["how_long_ago"] = how_long_ago
 
     if not paragraphs:
@@ -72,7 +82,9 @@ def calculate_paragraph_score(
             )
             return (
                 news,
-                stale_cached_sentiment.get("sentiment_scores_of_new", {}),
+                _build_sentiment_summary(
+                    stale_cached_sentiment.get("sentiment_scores_of_new", {})
+                ),
             )
 
         news["paragraphs"] = []
@@ -95,7 +107,9 @@ def calculate_paragraph_score(
         )
         return (
             news,
-            reusable_cached_sentiment.get("sentiment_scores_of_new", {}),
+            _build_sentiment_summary(
+                reusable_cached_sentiment.get("sentiment_scores_of_new", {})
+            ),
         )
 
     if not model_available:
@@ -147,7 +161,7 @@ def calculate_paragraph_score(
         },
     )
 
-    return (news, sentiment_scores_of_new)
+    return (news, _build_sentiment_summary(sentiment_scores_of_new))
 
 
 def create_app() -> Flask:
@@ -190,12 +204,14 @@ def create_app() -> Flask:
         )
         if company_exists:
             message = None
-            current_timestamp = (
-                datetime.now() - timedelta(days=start_day)
-            ).strftime(TIMESTAMP_FORMAT)
-            start_timestamp = (
-                datetime.now() - timedelta(days=end_day)
-            ).strftime(TIMESTAMP_FORMAT)
+            now = datetime.now()
+            actual_timestamp = now.strftime(TIMESTAMP_FORMAT)
+            current_timestamp = (now - timedelta(days=start_day)).strftime(
+                TIMESTAMP_FORMAT
+            )
+            start_timestamp = (now - timedelta(days=end_day)).strftime(
+                TIMESTAMP_FORMAT
+            )
 
             news, news_source = yahoo_news_scraper.get_news_URLs(
                 ticker_symbol,
@@ -236,7 +252,14 @@ def create_app() -> Flask:
                 args = []
                 results = []
                 for news_item in news:
-                    args.append((news_item, current_timestamp, True))
+                    args.append(
+                        (
+                            news_item,
+                            current_timestamp,
+                            actual_timestamp,
+                            True,
+                        )
+                    )
 
                 model_available = True
                 try:
@@ -266,7 +289,12 @@ def create_app() -> Flask:
 
                 if not model_available:
                     args = [
-                        (news_item, current_timestamp, False)
+                        (
+                            news_item,
+                            current_timestamp,
+                            actual_timestamp,
+                            False,
+                        )
                         for news_item in news
                     ]
 
