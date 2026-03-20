@@ -100,6 +100,37 @@ class ActionWeightingTests(unittest.TestCase):
         self.assertEqual("Buy", recommended_action)
         self.assertGreater(confidence_index, 0.5)
 
+    def test_weight_config_overrides_module_defaults(self) -> None:
+        with (
+            patch.object(action, "RECENCY_WEIGHT_HALF_LIFE_HOURS", 24.0),
+            patch.object(action, "RECENCY_WEIGHT_FLOOR", 0.2),
+            patch.object(action, "CONTENT_LENGTH_WEIGHT_TARGET_WORDS", 400),
+            patch.object(action, "CONTENT_LENGTH_WEIGHT_MIN", 0.75),
+            patch.object(action, "CONTENT_LENGTH_WEIGHT_MAX", 1.25),
+        ):
+            default_weight = action.get_article_weight(
+                {
+                    "age_seconds": 86400,
+                    "content_length_words": 100,
+                }
+            )
+            override_weight = action.get_article_weight(
+                {
+                    "age_seconds": 86400,
+                    "content_length_words": 100,
+                },
+                {
+                    "recency_half_life_hours": 48,
+                    "recency_floor": 0.4,
+                    "content_length_target_words": 200,
+                    "content_length_min": 1.0,
+                    "content_length_max": 2.0,
+                },
+            )
+
+        self.assertAlmostEqual(0.525, default_weight, places=3)
+        self.assertAlmostEqual(1.236, override_weight, places=3)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -117,6 +117,72 @@
         padding: 0 1rem;
       }
 
+      .tuning-panel {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        background: var(--light-bg);
+      }
+
+      .tuning-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .tuning-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .tuning-note {
+        margin: 0 0 1rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+
+      .tuning-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem 1.25rem;
+      }
+
+      .tuning-control {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .tuning-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-primary);
+      }
+
+      .tuning-value {
+        color: var(--primary-color);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .tuning-range {
+        width: 100%;
+        accent-color: var(--primary-color);
+      }
+
+      .tuning-help {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+      }
+
       .noUi-connect {
         background: var(--primary-color);
       }
@@ -404,11 +470,16 @@
         .sentiment-scores {
           justify-content: flex-start;
         }
+
+        .tuning-grid {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
+        const recommendationInputs = {{ recommendation_inputs|default([], true)|tojson }};
         const slider = document.getElementById("slider");
         if (!slider) return;
 
@@ -447,6 +518,194 @@
         const [v0, v1] = slider.noUiSlider.get();
         hiddenStart.value = parseInt(v0, 10);
         hiddenEnd.value = parseInt(v1, 10);
+
+        const tuningInputs = document.querySelectorAll("[data-value-target]");
+        const formatTuningValue = (input) => {
+          const value = parseFloat(input.value);
+          switch (input.dataset.format) {
+            case "hours":
+              if (value === 0) return "0 h";
+              if (value % 24 === 0) return `${value / 24} d`;
+              return `${value} h`;
+            case "percent":
+              return `${Math.round(value * 100)}%`;
+            case "words":
+              return `${Math.round(value)} words`;
+            default:
+              return value.toFixed(2);
+          }
+        };
+
+        const syncTuningValue = (input) => {
+          const target = document.getElementById(input.dataset.valueTarget);
+          if (target) target.textContent = formatTuningValue(input);
+        };
+
+        const getWeightConfig = () => ({
+          recency_half_life_hours: parseFloat(document.getElementById("recency_half_life_hours").value),
+          recency_floor: parseFloat(document.getElementById("recency_floor").value),
+          content_length_target_words: parseInt(document.getElementById("content_length_target_words").value, 10),
+          content_length_min: parseFloat(document.getElementById("content_length_min").value),
+          content_length_max: parseFloat(document.getElementById("content_length_max").value)
+        });
+
+        const normalizeRecommendationScore = (action, score) => {
+          if (action === "Positive") return score / 2 + 0.5;
+          return (1 - score) / 2;
+        };
+
+        const getRecencyWeight = (ageSeconds, weightConfig) => {
+          if (ageSeconds === null || ageSeconds === undefined) return 1.0;
+          if (weightConfig.recency_half_life_hours <= 0) return 1.0;
+
+          const normalizedAgeSeconds = Math.max(Number(ageSeconds), 0);
+          const halfLifeSeconds = weightConfig.recency_half_life_hours * 3600;
+          const decay = Math.pow(0.5, normalizedAgeSeconds / halfLifeSeconds);
+          return weightConfig.recency_floor + (1 - weightConfig.recency_floor) * decay;
+        };
+
+        const getContentLengthWeight = (contentLengthWords, weightConfig) => {
+          if (contentLengthWords === null || contentLengthWords === undefined) return 1.0;
+          if (weightConfig.content_length_target_words <= 0) return 1.0;
+
+          const normalizedContentLength = Math.max(Number(contentLengthWords), 0);
+          const progress = Math.min(
+            normalizedContentLength / weightConfig.content_length_target_words,
+            1.0
+          );
+          return weightConfig.content_length_min + (
+            weightConfig.content_length_max - weightConfig.content_length_min
+          ) * progress;
+        };
+
+        const getArticleWeight = (item, weightConfig) => (
+          getRecencyWeight(item.age_seconds, weightConfig)
+          * getContentLengthWeight(item.content_length_words, weightConfig)
+        );
+
+        const getRecommendedAction = (items, weightConfig) => {
+          let totalWeight = 0.0;
+          let action = "";
+          let actionColumnScore = 0.0;
+          let correspondColumnScore = 0.0;
+          let positiveWeight = 0.0;
+          let negativeWeight = 0.0;
+
+          items.forEach((item) => {
+            if (item.label === "Neutral") return;
+
+            const articleWeight = getArticleWeight(item, weightConfig);
+            totalWeight += articleWeight;
+            if (item.label === "Positive") positiveWeight += articleWeight;
+            if (item.label === "Negative") negativeWeight += articleWeight;
+          });
+
+          action = positiveWeight >= negativeWeight ? "Positive" : "Negative";
+
+          items.forEach((item) => {
+            if (item.label === "Neutral") return;
+
+            const articleWeight = getArticleWeight(item, weightConfig);
+            if (item.label === "Positive") {
+              if (action === "Positive") {
+                actionColumnScore += articleWeight * item.highest_score;
+                correspondColumnScore -= articleWeight * item.corresponding_score;
+              } else {
+                actionColumnScore -= articleWeight * item.highest_score;
+                correspondColumnScore += articleWeight * item.corresponding_score;
+              }
+            }
+
+            if (item.label === "Negative") {
+              if (action === "Negative") {
+                actionColumnScore += articleWeight * item.highest_score;
+                correspondColumnScore -= articleWeight * item.corresponding_score;
+              } else {
+                actionColumnScore -= articleWeight * item.highest_score;
+                correspondColumnScore += articleWeight * item.corresponding_score;
+              }
+            }
+          });
+
+          if (action === "Positive") {
+            correspondColumnScore = -correspondColumnScore;
+          } else {
+            actionColumnScore = -actionColumnScore;
+          }
+
+          if (totalWeight) {
+            actionColumnScore /= totalWeight;
+            correspondColumnScore /= totalWeight;
+          }
+
+          if (actionColumnScore - correspondColumnScore >= 0 && actionColumnScore - correspondColumnScore <= 0.2) {
+            return { recommendation: "Hold", confidence: 0.0 };
+          }
+
+          if (actionColumnScore > correspondColumnScore) {
+            return {
+              recommendation: "Buy",
+              confidence: normalizeRecommendationScore(action, actionColumnScore)
+            };
+          }
+
+          return {
+            recommendation: "Sell",
+            confidence: normalizeRecommendationScore(action, correspondColumnScore)
+          };
+        };
+
+        const updateRecommendationCard = () => {
+          const actionElement = document.getElementById("recommendation-action");
+          const confidenceElement = document.getElementById("confidence-index");
+          if (!actionElement || !confidenceElement || recommendationInputs.length === 0) return;
+
+          const result = getRecommendedAction(recommendationInputs, getWeightConfig());
+          actionElement.textContent = result.recommendation;
+          actionElement.classList.remove(
+            "recommendation-buy",
+            "recommendation-hold",
+            "recommendation-sell"
+          );
+          actionElement.classList.add(
+            result.recommendation === "Buy"
+              ? "recommendation-buy"
+              : result.recommendation === "Hold"
+                ? "recommendation-hold"
+                : "recommendation-sell"
+          );
+
+          if (result.recommendation === "Hold") {
+            confidenceElement.style.display = "none";
+            return;
+          }
+
+          confidenceElement.style.display = "block";
+          confidenceElement.innerHTML = `<i class="fas fa-chart-line me-2"></i>Confidence: ${result.confidence.toFixed(3)}`;
+        };
+
+        tuningInputs.forEach((input) => {
+          syncTuningValue(input);
+          input.addEventListener("input", function () {
+            const minWeight = document.getElementById("content_length_min");
+            const maxWeight = document.getElementById("content_length_max");
+
+            if (input.id === "content_length_min" && parseFloat(input.value) > parseFloat(maxWeight.value)) {
+              maxWeight.value = input.value;
+              syncTuningValue(maxWeight);
+            }
+
+            if (input.id === "content_length_max" && parseFloat(input.value) < parseFloat(minWeight.value)) {
+              minWeight.value = input.value;
+              syncTuningValue(minWeight);
+            }
+
+            syncTuningValue(input);
+            updateRecommendationCard();
+          });
+        });
+
+        updateRecommendationCard();
 
         // Loading state on submit
         if (form) {
@@ -492,14 +751,151 @@
               <i class="fas fa-search me-2"></i>Analyze
             </button>
           </div>
-        </form>
+          <div class="slider-container">
+            <label class="form-label text-center d-block mb-2">
+              <i class="fas fa-calendar-alt me-2"></i>News Lookback Period
+            </label>
+            <div id="slider"></div>
+          </div>
 
-        <div class="slider-container">
-          <label class="form-label text-center d-block mb-2">
-            <i class="fas fa-calendar-alt me-2"></i>News Lookback Period
-          </label>
-          <div id="slider"></div>
-        </div>
+          <div class="tuning-panel">
+            <div class="tuning-header">
+              <h2 class="tuning-title">
+                <i class="fas fa-sliders me-2"></i>Recommendation Tuning
+              </h2>
+            </div>
+            <p class="tuning-note">
+              These sliders only change the final recommendation weighting for
+              this request. Cached article sentiment stays unchanged.
+            </p>
+
+            <div class="tuning-grid">
+              <div class="tuning-control">
+                <label class="tuning-label" for="recency_half_life_hours">
+                  <span>Recency half-life</span>
+                  <span
+                    id="recency_half_life_hours_value"
+                    class="tuning-value"
+                  ></span>
+                </label>
+                <input
+                  type="range"
+                  class="tuning-range"
+                  id="recency_half_life_hours"
+                  name="recency_half_life_hours"
+                  min="0"
+                  max="720"
+                  step="12"
+                  value="{{ weight_config['recency_half_life_hours'] }}"
+                  data-format="hours"
+                  data-value-target="recency_half_life_hours_value"
+                />
+                <p class="tuning-help">
+                  Higher values let older news keep influence longer.
+                </p>
+              </div>
+
+              <div class="tuning-control">
+                <label class="tuning-label" for="recency_floor">
+                  <span>Recency floor</span>
+                  <span id="recency_floor_value" class="tuning-value"></span>
+                </label>
+                <input
+                  type="range"
+                  class="tuning-range"
+                  id="recency_floor"
+                  name="recency_floor"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value="{{ weight_config['recency_floor'] }}"
+                  data-format="percent"
+                  data-value-target="recency_floor_value"
+                />
+                <p class="tuning-help">
+                  Prevents older articles from decaying all the way to zero.
+                </p>
+              </div>
+
+              <div class="tuning-control">
+                <label
+                  class="tuning-label"
+                  for="content_length_target_words"
+                >
+                  <span>Length target</span>
+                  <span
+                    id="content_length_target_words_value"
+                    class="tuning-value"
+                  ></span>
+                </label>
+                <input
+                  type="range"
+                  class="tuning-range"
+                  id="content_length_target_words"
+                  name="content_length_target_words"
+                  min="0"
+                  max="2000"
+                  step="50"
+                  value="{{ weight_config['content_length_target_words'] }}"
+                  data-format="words"
+                  data-value-target="content_length_target_words_value"
+                />
+                <p class="tuning-help">
+                  Articles at or above this word count receive the max length
+                  weight.
+                </p>
+              </div>
+
+              <div class="tuning-control">
+                <label class="tuning-label" for="content_length_min">
+                  <span>Length weight min</span>
+                  <span
+                    id="content_length_min_value"
+                    class="tuning-value"
+                  ></span>
+                </label>
+                <input
+                  type="range"
+                  class="tuning-range"
+                  id="content_length_min"
+                  name="content_length_min"
+                  min="0"
+                  max="3"
+                  step="0.05"
+                  value="{{ weight_config['content_length_min'] }}"
+                  data-value-target="content_length_min_value"
+                />
+                <p class="tuning-help">
+                  Weight applied to very short articles.
+                </p>
+              </div>
+
+              <div class="tuning-control">
+                <label class="tuning-label" for="content_length_max">
+                  <span>Length weight max</span>
+                  <span
+                    id="content_length_max_value"
+                    class="tuning-value"
+                  ></span>
+                </label>
+                <input
+                  type="range"
+                  class="tuning-range"
+                  id="content_length_max"
+                  name="content_length_max"
+                  min="0"
+                  max="3"
+                  step="0.05"
+                  value="{{ weight_config['content_length_max'] }}"
+                  data-value-target="content_length_max_value"
+                />
+                <p class="tuning-help">
+                  Weight applied once the target word count is reached.
+                </p>
+              </div>
+            </div>
+          </div>
+        </form>
       </div>
 
       <!-- Loading State -->
@@ -678,16 +1074,19 @@
               <i class="fas fa-lightbulb me-2"></i>AI Recommendation
             </div>
             <div
+              id="recommendation-action"
               class="recommendation-action {% if recommended_action == 'Buy' %} recommendation-buy {% elif recommended_action == 'Hold' %} recommendation-hold {% else %} recommendation-sell{% endif %}"
             >
               {{ recommended_action }}
             </div>
-            {% if recommended_action != 'Hold' %}
-            <div class="confidence-index">
+            <div
+              id="confidence-index"
+              class="confidence-index"
+              {% if recommended_action == 'Hold' %}style="display: none"{% endif %}
+            >
               <i class="fas fa-chart-line me-2"></i>Confidence: {{
               confidence_index }}
             </div>
-            {% endif %}
           </div>
 
           <!-- Stock Chart -->

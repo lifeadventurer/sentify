@@ -561,6 +561,104 @@ class FallbackBehaviorTests(unittest.TestCase):
             response["message"],
         )
 
+    def test_search_passes_ui_weight_overrides_to_recommendation(self) -> None:
+        app = flask_app.create_app()
+        search = app.routes[("/", ("POST",))]
+
+        with (
+            patch.object(
+                flask_app.request,
+                "form",
+                {
+                    "company": "AAPL",
+                    "recency_half_life_hours": "48",
+                    "recency_floor": "0.35",
+                    "content_length_target_words": "600",
+                    "content_length_min": "0.9",
+                    "content_length_max": "1.8",
+                },
+            ),
+            patch.object(
+                flask_app.data,
+                "check_company_exists",
+                return_value=(True, ("Apple Inc.", "AAPL")),
+            ),
+            patch.object(
+                flask_app.yahoo_news_scraper,
+                "get_news_URLs",
+                return_value=(
+                    [
+                        {
+                            "news_URL": "https://example.com/article",
+                            "publish_date": "2026-03-10T00:00:00Z",
+                            "news_title": "Apple weighting",
+                        }
+                    ],
+                    "live",
+                ),
+            ),
+            patch.object(flask_app.sentiment_analyzer, "preload_model"),
+            patch.object(flask_app, "Pool") as pool_cls,
+            patch.object(
+                flask_app.action,
+                "get_recommended_action",
+                return_value=("Buy", 0.9),
+            ) as get_recommended_action,
+            patch.object(
+                flask_app,
+                "render_template",
+                side_effect=lambda *_args, **kwargs: kwargs,
+            ),
+        ):
+
+            class DummyPool:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_args):
+                    return False
+
+                def starmap(self, _func, _args):
+                    return [
+                        (
+                            {
+                                "paragraphs": [],
+                                "overall_sentiment_score": {},
+                            },
+                            {
+                                "label": "Positive",
+                                "highest_score": 0.8,
+                                "corresponding_score": 0.1,
+                                "content_length_words": 500,
+                            },
+                        )
+                    ]
+
+            pool_cls.return_value = DummyPool()
+            response = search()
+
+        get_recommended_action.assert_called_once_with(
+            [
+                {
+                    "label": "Positive",
+                    "highest_score": 0.8,
+                    "corresponding_score": 0.1,
+                    "content_length_words": 500,
+                }
+            ],
+            {
+                "recency_half_life_hours": 48.0,
+                "recency_floor": 0.35,
+                "content_length_target_words": 600,
+                "content_length_min": 0.9,
+                "content_length_max": 1.8,
+            },
+        )
+        self.assertEqual(
+            48.0, response["weight_config"]["recency_half_life_hours"]
+        )
+        self.assertEqual(1.8, response["weight_config"]["content_length_max"])
+
     def test_create_app_uses_cache_retention_ttls_for_cleanup(self) -> None:
         with (
             patch.object(flask_app, "NEWS_LIST_CACHE_RETENTION_SECONDS", 3600),

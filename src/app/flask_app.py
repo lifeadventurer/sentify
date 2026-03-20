@@ -28,6 +28,88 @@ def _get_sentiment_cache_key(news_url: str) -> str:
     )
 
 
+def _get_float_form_value(
+    form_data,
+    key: str,
+    default: float,
+    minimum: float | None = None,
+    maximum: float | None = None,
+) -> float:
+    try:
+        value = float(form_data[key]) if form_data[key] else default
+    except (ValueError, KeyError):
+        value = default
+
+    if minimum is not None:
+        value = max(value, minimum)
+    if maximum is not None:
+        value = min(value, maximum)
+    return value
+
+
+def _get_int_form_value(
+    form_data,
+    key: str,
+    default: int,
+    minimum: int | None = None,
+    maximum: int | None = None,
+) -> int:
+    try:
+        value = int(form_data[key]) if form_data[key] else default
+    except (ValueError, KeyError):
+        value = default
+
+    if minimum is not None:
+        value = max(value, minimum)
+    if maximum is not None:
+        value = min(value, maximum)
+    return value
+
+
+def _get_weight_config_from_form(form_data=None) -> dict:
+    form_data = form_data or {}
+    content_length_min = _get_float_form_value(
+        form_data,
+        "content_length_min",
+        action.CONTENT_LENGTH_WEIGHT_MIN,
+        minimum=0.0,
+        maximum=3.0,
+    )
+    return action.get_weight_config(
+        {
+            "recency_half_life_hours": _get_float_form_value(
+                form_data,
+                "recency_half_life_hours",
+                action.RECENCY_WEIGHT_HALF_LIFE_HOURS,
+                minimum=0.0,
+                maximum=720.0,
+            ),
+            "recency_floor": _get_float_form_value(
+                form_data,
+                "recency_floor",
+                action.RECENCY_WEIGHT_FLOOR,
+                minimum=0.0,
+                maximum=1.0,
+            ),
+            "content_length_target_words": _get_int_form_value(
+                form_data,
+                "content_length_target_words",
+                action.CONTENT_LENGTH_WEIGHT_TARGET_WORDS,
+                minimum=0,
+                maximum=2000,
+            ),
+            "content_length_min": content_length_min,
+            "content_length_max": _get_float_form_value(
+                form_data,
+                "content_length_max",
+                action.CONTENT_LENGTH_WEIGHT_MAX,
+                minimum=content_length_min,
+                maximum=3.0,
+            ),
+        }
+    )
+
+
 def _get_content_length_words(paragraphs) -> int | None:
     if not paragraphs:
         return None
@@ -224,6 +306,10 @@ def create_app() -> Flask:
             "index.html",
             max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
             offline_mode=OFFLINE_MODE,
+            start_day=0,
+            end_day=2,
+            weight_config=_get_weight_config_from_form(),
+            recommendation_inputs=[],
         )
 
     @app.route("/", methods=["POST"])
@@ -242,6 +328,8 @@ def create_app() -> Flask:
             end_day = int(request.form["end"]) if request.form["end"] else 2
         except (ValueError, KeyError):
             end_day = 2
+
+        weight_config = _get_weight_config_from_form(request.form)
 
         company_exists, [company_name, ticker_symbol] = (
             data.check_company_exists(input_company)
@@ -353,7 +441,10 @@ def create_app() -> Flask:
 
             # Recommended action
             recommended_action, confidence_index = (
-                action.get_recommended_action(sentiment_scores_of_news)
+                action.get_recommended_action(
+                    sentiment_scores_of_news,
+                    weight_config,
+                )
             )
 
             return render_template(
@@ -369,6 +460,8 @@ def create_app() -> Flask:
                 offline_mode=OFFLINE_MODE,
                 start_day=start_day,
                 end_day=end_day,
+                weight_config=weight_config,
+                recommendation_inputs=sentiment_scores_of_news,
             )
         else:
             return render_template(
@@ -377,6 +470,10 @@ def create_app() -> Flask:
                 message="No such company exists",
                 max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
                 offline_mode=OFFLINE_MODE,
+                start_day=start_day,
+                end_day=end_day,
+                weight_config=weight_config,
+                recommendation_inputs=[],
             )
 
     return app
