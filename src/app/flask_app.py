@@ -7,8 +7,10 @@ from flask import Flask, render_template, request
 from config.config import (
     CPU_COUNT,
     MAX_NEWS_LOOKBACK_DAYS,
-    NEWS_ARTICLE_CACHE_TTL_SECONDS,
-    NEWS_LIST_CACHE_TTL_SECONDS,
+    NEWS_ARTICLE_CACHE_RETENTION_SECONDS,
+    NEWS_LIST_CACHE_RETENTION_SECONDS,
+    OFFLINE_MODE,
+    SENTIMENT_CACHE_RETENTION_SECONDS,
     SENTIMENT_CACHE_TTL_SECONDS,
     TIMESTAMP_FORMAT,
 )
@@ -26,11 +28,21 @@ def _get_sentiment_cache_key(news_url: str) -> str:
     )
 
 
-def calculate_paragraph_score(news_item, current_timestamp):
+def calculate_paragraph_score(
+    news_item,
+    current_timestamp,
+    model_available=True,
+):
     paragraphs_with_sentiment_scores = []
     cache_key = _get_sentiment_cache_key(news_item["news_URL"])
     cached_sentiment = cache.get_cached_json(
         "news_sentiment", cache_key, SENTIMENT_CACHE_TTL_SECONDS
+    )
+    stale_cached_sentiment = cache.get_cached_json(
+        "news_sentiment",
+        cache_key,
+        SENTIMENT_CACHE_TTL_SECONDS,
+        allow_stale=True,
     )
     paragraphs, article_status = yahoo_news_scraper.get_news_paragraphs(
         news_item["news_URL"]
@@ -53,32 +65,43 @@ def calculate_paragraph_score(news_item, current_timestamp):
         news["how_long_ago"] = how_long_ago
 
     if not paragraphs:
-        if cached_sentiment is not None and article_status != "premium":
-            news["paragraphs"] = cached_sentiment.get("paragraphs", [])
-            news["overall_sentiment_score"] = cached_sentiment.get(
+        if stale_cached_sentiment is not None and article_status != "premium":
+            news["paragraphs"] = stale_cached_sentiment.get("paragraphs", [])
+            news["overall_sentiment_score"] = stale_cached_sentiment.get(
                 "overall_sentiment_score", {}
             )
             return (
                 news,
-                cached_sentiment.get("sentiment_scores_of_new", {}),
+                stale_cached_sentiment.get("sentiment_scores_of_new", {}),
             )
 
         news["paragraphs"] = []
         news["article_status"] = article_status or "unavailable"
         return (news, sentiment_scores_of_new)
 
-    if (
-        cached_sentiment is not None
-        and cached_sentiment.get("article_paragraphs") == paragraphs
-    ):
-        news["paragraphs"] = cached_sentiment.get("paragraphs", [])
-        news["overall_sentiment_score"] = cached_sentiment.get(
+    reusable_cached_sentiment = None
+    for cached_value in (cached_sentiment, stale_cached_sentiment):
+        if (
+            cached_value is not None
+            and cached_value.get("article_paragraphs") == paragraphs
+        ):
+            reusable_cached_sentiment = cached_value
+            break
+
+    if reusable_cached_sentiment is not None:
+        news["paragraphs"] = reusable_cached_sentiment.get("paragraphs", [])
+        news["overall_sentiment_score"] = reusable_cached_sentiment.get(
             "overall_sentiment_score", {}
         )
         return (
             news,
-            cached_sentiment.get("sentiment_scores_of_new", {}),
+            reusable_cached_sentiment.get("sentiment_scores_of_new", {}),
         )
+
+    if not model_available:
+        news["paragraphs"] = []
+        news["article_status"] = "model_unavailable"
+        return (news, sentiment_scores_of_new)
 
     for paragraph in paragraphs:
         negative_score, neutral_score, positive_score = (
@@ -131,16 +154,18 @@ def create_app() -> Flask:
     app = Flask(__name__)
     cache.cleanup_expired_json(
         {
-            "news_urls": NEWS_LIST_CACHE_TTL_SECONDS,
-            "news_articles": NEWS_ARTICLE_CACHE_TTL_SECONDS,
-            "news_sentiment": SENTIMENT_CACHE_TTL_SECONDS,
+            "news_urls": NEWS_LIST_CACHE_RETENTION_SECONDS,
+            "news_articles": NEWS_ARTICLE_CACHE_RETENTION_SECONDS,
+            "news_sentiment": SENTIMENT_CACHE_RETENTION_SECONDS,
         }
     )
 
     @app.route("/")
     def home():
         return render_template(
-            "index.html", max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS
+            "index.html",
+            max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
+            offline_mode=OFFLINE_MODE,
         )
 
     @app.route("/", methods=["POST"])
@@ -164,6 +189,7 @@ def create_app() -> Flask:
             data.check_company_exists(input_company)
         )
         if company_exists:
+            message = None
             current_timestamp = (
                 datetime.now() - timedelta(days=start_day)
             ).strftime(TIMESTAMP_FORMAT)
@@ -171,12 +197,38 @@ def create_app() -> Flask:
                 datetime.now() - timedelta(days=end_day)
             ).strftime(TIMESTAMP_FORMAT)
 
-            news = yahoo_news_scraper.get_news_URLs(
+            news, news_source = yahoo_news_scraper.get_news_URLs(
                 ticker_symbol,
                 start_timestamp=start_timestamp,
                 end_timestamp=current_timestamp,
                 title_flag=True,
             )
+            if OFFLINE_MODE:
+                if news_source == "cache":
+                    message = (
+                        "Offline mode is enabled. Showing cached news and "
+                        "sentiment where available."
+                    )
+                elif news_source == "stale_cache":
+                    message = (
+                        "Offline mode is enabled. Showing stale cached news "
+                        "and sentiment where available."
+                    )
+                elif news_source == "offline_unavailable":
+                    message = (
+                        "Offline mode is enabled, but no cached news was "
+                        "found for this company and date range."
+                    )
+            elif news_source == "stale_cache":
+                message = (
+                    "Live news fetch failed. Showing stale cached news and "
+                    "sentiment where available."
+                )
+            elif news_source == "offline_unavailable":
+                message = (
+                    "Live news fetch failed and no cached news was "
+                    "available for this company and date range."
+                )
 
             sentiment_scores_of_news = []  # Including the label, the highest sentiment score, and the corresponding label's score
 
@@ -184,9 +236,40 @@ def create_app() -> Flask:
                 args = []
                 results = []
                 for news_item in news:
-                    args.append((news_item, current_timestamp))
+                    args.append((news_item, current_timestamp, True))
 
-                sentiment_analyzer.preload_model()
+                model_available = True
+                try:
+                    sentiment_analyzer.preload_model()
+                except Exception:
+                    model_available = False
+                    if OFFLINE_MODE:
+                        extra_message = (
+                            "Offline mode is enabled. Cached news is shown "
+                            "where available, but uncached articles could "
+                            "not be analyzed because no local sentiment "
+                            "model was found."
+                        )
+                        if message:
+                            message = f"{message} {extra_message}"
+                        else:
+                            message = extra_message
+                    else:
+                        extra_message = (
+                            "Live sentiment analysis is unavailable right "
+                            "now. Showing cached sentiment where available."
+                        )
+                        if message:
+                            message = f"{message} {extra_message}"
+                        else:
+                            message = extra_message
+
+                if not model_available:
+                    args = [
+                        (news_item, current_timestamp, False)
+                        for news_item in news
+                    ]
+
                 with Pool(CPU_COUNT) as pool:
                     results = pool.starmap(calculate_paragraph_score, args)
 
@@ -210,6 +293,8 @@ def create_app() -> Flask:
                 recommended_action=recommended_action,
                 confidence_index=f"{confidence_index: .3f}",
                 max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
+                message=message,
+                offline_mode=OFFLINE_MODE,
                 start_day=start_day,
                 end_day=end_day,
             )
@@ -219,6 +304,7 @@ def create_app() -> Flask:
                 company_exists=company_exists,
                 message="No such company exists",
                 max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
+                offline_mode=OFFLINE_MODE,
             )
 
     return app

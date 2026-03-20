@@ -67,6 +67,8 @@ To serve the Flask app locally, run:
 uv run python src/main.py
 ```
 
+Configuration can be provided through `src/config/config.py`, environment variables, or a repository-root `.env` file. You can start from `.env.example`.
+
 Optional model overrides:
 
 ```shell
@@ -74,11 +76,28 @@ export SENTIFY_MODEL_PATH="/path/to/local/model"
 export SENTIFY_MODEL_ID="marcev/financebert"
 export SENTIFY_MODEL_REVISION="<pinned-revision>"
 export SENTIFY_MODEL_LOCAL_FILES_ONLY=true
+export SENTIFY_OFFLINE_MODE=false
 export SENTIFY_CACHE_DIR="/path/to/cache"
 export SENTIFY_NEWS_LIST_CACHE_TTL_SECONDS=900
 export SENTIFY_NEWS_ARTICLE_CACHE_TTL_SECONDS=5184000
 export SENTIFY_SENTIMENT_CACHE_TTL_SECONDS=5184000
+export SENTIFY_NEWS_LIST_CACHE_RETENTION_SECONDS=5184000
+export SENTIFY_NEWS_ARTICLE_CACHE_RETENTION_SECONDS=5184000
+export SENTIFY_SENTIMENT_CACHE_RETENTION_SECONDS=5184000
 ```
+
+Default behavior:
+
+- Sentify tries live Yahoo requests and live model loading by default.
+- If Yahoo requests fail, Sentify falls back to cached news lists and article bodies when available.
+- If model loading fails, Sentify falls back to cached sentiment results when available.
+
+Offline mode:
+
+- Set `SENTIFY_OFFLINE_MODE=true` to disable Yahoo network requests and force local-only model loading.
+- You can put `SENTIFY_OFFLINE_MODE=true` in `.env` instead of prefixing the run command.
+- In offline mode, Sentify reuses cached news lists, article bodies, and sentiment results even if they are stale.
+- To analyze uncached articles offline, provide a local model with `SENTIFY_MODEL_PATH` or make sure the Hugging Face model is already cached locally.
 
 ## Configuration
 
@@ -101,10 +120,14 @@ CPU_COUNT = 2
 - `SENTIFY_MODEL_ID`: Hugging Face model id to use when no local path override is set.
 - `SENTIFY_MODEL_REVISION`: Optional pinned revision for reproducible Hugging Face loads.
 - `SENTIFY_MODEL_LOCAL_FILES_ONLY`: Forces local-only loading when set to `true`, `1`, `yes`, or `on`.
+- `SENTIFY_OFFLINE_MODE`: Disables Yahoo network fetches, reuses cached data even when stale, and forces local-only model loading. Defaults to `false`.
 - `SENTIFY_CACHE_DIR`: Directory for cached Yahoo news responses. Defaults to `.cache/sentify` in the repository root.
 - `SENTIFY_NEWS_LIST_CACHE_TTL_SECONDS`: How long ticker news query results stay fresh. Defaults to 900 seconds.
 - `SENTIFY_NEWS_ARTICLE_CACHE_TTL_SECONDS`: How long article body fetches stay fresh. Defaults to `MAX_NEWS_LOOKBACK_DAYS * 86400` seconds.
 - `SENTIFY_SENTIMENT_CACHE_TTL_SECONDS`: How long article sentiment results stay fresh. Defaults to `MAX_NEWS_LOOKBACK_DAYS * 86400` seconds.
+- `SENTIFY_NEWS_LIST_CACHE_RETENTION_SECONDS`: How long news-list cache files stay on disk for stale fallback. Defaults to at least `MAX_NEWS_LOOKBACK_DAYS * 86400` seconds and never below the freshness TTL.
+- `SENTIFY_NEWS_ARTICLE_CACHE_RETENTION_SECONDS`: How long cached article bodies stay on disk for stale fallback. Defaults to at least `MAX_NEWS_LOOKBACK_DAYS * 86400` seconds and never below the freshness TTL.
+- `SENTIFY_SENTIMENT_CACHE_RETENTION_SECONDS`: How long cached sentiment results stay on disk for stale fallback. Defaults to at least `MAX_NEWS_LOOKBACK_DAYS * 86400` seconds and never below the freshness TTL.
 
 ## LICENSE
 

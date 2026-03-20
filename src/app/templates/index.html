@@ -376,6 +376,16 @@
         margin-bottom: 1rem;
       }
 
+      .info-message {
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary-color);
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        font-weight: 500;
+        margin-bottom: 1rem;
+      }
+
       @media (max-width: 768px) {
         .main-container {
           padding: 1rem;
@@ -507,6 +517,11 @@
 
       <!-- Company Results -->
       {% if company_exists %}
+      {% if message %}
+      <div class="info-message">
+        <i class="fas fa-circle-info me-2"></i>{{ message }}
+      </div>
+      {% endif %}
       <div class="company-header">
         <div class="company-name">{{ company_name }}</div>
         <div class="ticker-symbol">{{ ticker_symbol }}</div>
@@ -540,6 +555,15 @@
                       {% if news_item.get('article_status') == 'premium' %}
                       <span class="sentiment-badge sentiment-neutral">
                         <i class="fas fa-lock"></i>Premium
+                      </span>
+                      {% elif news_item.get('article_status') == 'offline' %}
+                      <span class="sentiment-badge sentiment-neutral">
+                        <i class="fas fa-wifi"></i>Offline
+                      </span>
+                      {% elif news_item.get('article_status') ==
+                      'model_unavailable' %}
+                      <span class="sentiment-badge sentiment-neutral">
+                        <i class="fas fa-microchip"></i>Model unavailable
                       </span>
                       {% elif news_item.get('article_status') == 'unavailable' %}
                       <span class="sentiment-badge sentiment-neutral">
@@ -582,6 +606,22 @@
                       <div class="paragraph-text">
                         This Yahoo Finance article is premium content, so its
                         paragraphs could not be analyzed.
+                      </div>
+                    </div>
+                    {% elif news_item.get('article_status') == 'offline' %}
+                    <div class="paragraph">
+                      <div class="paragraph-text">
+                        Offline mode is enabled, and this article body was not
+                        found in the local cache.
+                      </div>
+                    </div>
+                    {% elif news_item.get('article_status') ==
+                    'model_unavailable' %}
+                    <div class="paragraph">
+                      <div class="paragraph-text">
+                        Sentiment analysis is currently unavailable, and no
+                        matching cached sentiment result was found for this
+                        article.
                       </div>
                     </div>
                     {% elif news_item.get('article_status') == 'unavailable' %}

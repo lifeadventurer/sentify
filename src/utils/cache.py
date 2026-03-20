@@ -25,7 +25,12 @@ def _read_cache_payload(cache_file: Path) -> dict[str, Any] | None:
     return payload
 
 
-def get_cached_json(namespace: str, key: str, ttl_seconds: int) -> Any | None:
+def get_cached_json(
+    namespace: str,
+    key: str,
+    ttl_seconds: int,
+    allow_stale: bool = False,
+) -> Any | None:
     cache_file = _cache_file_path(namespace, key)
     payload = _read_cache_payload(cache_file)
     if payload is None:
@@ -35,7 +40,7 @@ def get_cached_json(namespace: str, key: str, ttl_seconds: int) -> Any | None:
     if not isinstance(cached_at, int | float):
         return None
 
-    if time.time() - cached_at > ttl_seconds:
+    if not allow_stale and time.time() - cached_at > ttl_seconds:
         return None
 
     return payload.get("value")

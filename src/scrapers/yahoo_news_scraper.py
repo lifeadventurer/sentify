@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from config.config import (
     NEWS_ARTICLE_CACHE_TTL_SECONDS,
     NEWS_LIST_CACHE_TTL_SECONDS,
+    OFFLINE_MODE,
     TIMESTAMP_FORMAT,
     UTC_DIFFERENCE,
 )
@@ -40,12 +41,24 @@ def _get_news_list_cache_key(
     )
 
 
+def _extract_cached_news_items(cached_value) -> list:
+    if isinstance(cached_value, list):
+        return cached_value
+
+    if isinstance(cached_value, dict) and isinstance(
+        cached_value.get("items"), list
+    ):
+        return cached_value["items"]
+
+    return []
+
+
 def get_news_URLs(
     ticker_symbol: str,
     start_timestamp: str,
     end_timestamp: str,
     title_flag: bool = False,
-) -> list:
+) -> tuple[list, str]:
     cache_key = _get_news_list_cache_key(
         ticker_symbol, start_timestamp, end_timestamp, title_flag
     )
@@ -53,7 +66,23 @@ def get_news_URLs(
         "news_urls", cache_key, NEWS_LIST_CACHE_TTL_SECONDS
     )
     if cached_news_urls is not None:
-        return cached_news_urls
+        return _extract_cached_news_items(cached_news_urls), "cache"
+
+    stale_cached_news_urls = cache.get_cached_json(
+        "news_urls", cache_key, NEWS_LIST_CACHE_TTL_SECONDS, allow_stale=True
+    )
+
+    if OFFLINE_MODE:
+        if stale_cached_news_urls is not None:
+            return _extract_cached_news_items(
+                stale_cached_news_urls
+            ), "stale_cache"
+
+        print(
+            "Offline mode enabled and no cached news list is available "
+            f"for {ticker_symbol}."
+        )
+        return [], "offline_unavailable"
 
     API_URL = f"https://finance.yahoo.com/xhr/ncp?location=US&queryRef=newsAll&serviceKey=ncp_fin&listName={ticker_symbol}-news&lang=en-US&region=US"
 
@@ -74,7 +103,16 @@ def get_news_URLs(
             },
         }
 
-        response = requests.post(API_URL, json=payload, headers=headers)
+        try:
+            response = requests.post(API_URL, json=payload, headers=headers)
+        except requests.RequestException as exc:
+            print(f"Failed to retrieve the page: {exc}")
+            if stale_cached_news_urls is not None:
+                return (
+                    _extract_cached_news_items(stale_cached_news_urls),
+                    "stale_cache",
+                )
+            return [], "offline_unavailable"
 
         if response.status_code == 200:
             streams = response.json()["data"]["tickerStream"]["stream"]
@@ -137,6 +175,12 @@ def get_news_URLs(
             print(
                 f"Failed to retrieve the page. Status code: {response.status_code}"
             )
+            if stale_cached_news_urls is not None:
+                return (
+                    _extract_cached_news_items(stale_cached_news_urls),
+                    "stale_cache",
+                )
+            return [], "offline_unavailable"
 
     sorted_news_URLs = sorted(
         news_URLs,
@@ -144,7 +188,7 @@ def get_news_URLs(
         reverse=True,
     )
     cache.set_cached_json("news_urls", cache_key, sorted_news_URLs)
-    return sorted_news_URLs
+    return sorted_news_URLs, "live"
 
 
 def get_news_paragraphs(news_URL: str) -> tuple[list[str], str | None]:
@@ -157,7 +201,36 @@ def get_news_paragraphs(news_URL: str) -> tuple[list[str], str | None]:
             cached_article.get("article_status"),
         )
 
-    response = requests.get(news_URL, headers=headers)
+    stale_cached_article = cache.get_cached_json(
+        "news_articles",
+        news_URL,
+        NEWS_ARTICLE_CACHE_TTL_SECONDS,
+        allow_stale=True,
+    )
+
+    if OFFLINE_MODE:
+        if stale_cached_article is not None:
+            return (
+                stale_cached_article.get("paragraphs", []),
+                stale_cached_article.get("article_status"),
+            )
+
+        print(
+            "Offline mode enabled and no cached article body is available "
+            f"for {news_URL}."
+        )
+        return [], "offline"
+
+    try:
+        response = requests.get(news_URL, headers=headers)
+    except requests.RequestException as exc:
+        print(f"Failed to retrieve the article: {exc}")
+        if stale_cached_article is not None:
+            return (
+                stale_cached_article.get("paragraphs", []),
+                stale_cached_article.get("article_status"),
+            )
+        return [], "unavailable"
     response_text = response.text
     response_text_lower = response_text.lower()
 
@@ -185,10 +258,20 @@ def get_news_paragraphs(news_URL: str) -> tuple[list[str], str | None]:
 
     else:
         print("No element found with class name: body")
+        if stale_cached_article is not None:
+            return (
+                stale_cached_article.get("paragraphs", []),
+                stale_cached_article.get("article_status"),
+            )
         return [], "unavailable"
 
     if not news_paragraphs:
         print(f"No readable paragraphs found: {news_URL}")
+        if stale_cached_article is not None:
+            return (
+                stale_cached_article.get("paragraphs", []),
+                stale_cached_article.get("article_status"),
+            )
         return [], "unavailable"
 
     cache.set_cached_json(

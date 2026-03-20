@@ -7,6 +7,7 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from config.config import (
+    OFFLINE_MODE,
     SENTIMENT_MODEL_ID,
     SENTIMENT_MODEL_LOCAL_FILES_ONLY,
     SENTIMENT_MODEL_PATH,
@@ -24,7 +25,7 @@ def _get_model_source() -> str:
 
 def _get_model_load_kwargs() -> dict[str, Any]:
     kwargs: dict[str, Any] = {
-        "local_files_only": SENTIMENT_MODEL_LOCAL_FILES_ONLY,
+        "local_files_only": SENTIMENT_MODEL_LOCAL_FILES_ONLY or OFFLINE_MODE,
     }
 
     if SENTIMENT_MODEL_REVISION and not SENTIMENT_MODEL_PATH:
