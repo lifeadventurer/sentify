@@ -68,12 +68,26 @@ body {
 }
 
 .search-input-group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
   max-width: 380px;
   margin: 0;
 }
 
+.company-autocomplete {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .search-input-group .form-control {
   min-height: 52px;
+}
+
+.search-input-group > .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .form-control {
@@ -87,6 +101,55 @@ body {
 .form-control:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.1);
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+}
+
+.autocomplete-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.is-active {
+  background: #eff6ff;
+}
+
+.autocomplete-item-label {
+  font-weight: 500;
+}
+
+.autocomplete-item-ticker {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--light-bg);
+  color: var(--secondary-color);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .btn-primary {

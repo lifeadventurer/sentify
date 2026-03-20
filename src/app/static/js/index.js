@@ -1,6 +1,199 @@
 document.addEventListener("DOMContentLoaded", function () {
+  const form = document.querySelector(".search-form");
+  const companyInput = document.getElementById("company");
+  const suggestionsElement = document.getElementById("company-suggestions");
+
+  if (companyInput && suggestionsElement) {
+    let activeIndex = -1;
+    let abortController = null;
+    let debounceTimer = null;
+    let currentSuggestions = [];
+    let latestRequestId = 0;
+
+    const closeSuggestions = () => {
+      if (debounceTimer) {
+        window.clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+      }
+      latestRequestId += 1;
+      activeIndex = -1;
+      currentSuggestions = [];
+      suggestionsElement.hidden = true;
+      suggestionsElement.innerHTML = "";
+      companyInput.setAttribute("aria-expanded", "false");
+      companyInput.removeAttribute("aria-activedescendant");
+    };
+
+    const selectSuggestion = (suggestion) => {
+      companyInput.value = suggestion.label;
+      closeSuggestions();
+    };
+
+    const updateActiveSuggestion = () => {
+      const items = suggestionsElement.querySelectorAll(
+        ".autocomplete-item",
+      );
+      items.forEach((item, index) => {
+        const isActive = index === activeIndex;
+        item.classList.toggle("is-active", isActive);
+        item.setAttribute("aria-selected", isActive ? "true" : "false");
+        if (isActive) {
+          companyInput.setAttribute("aria-activedescendant", item.id);
+        }
+      });
+
+      if (activeIndex < 0) {
+        companyInput.removeAttribute("aria-activedescendant");
+      }
+    };
+
+    const renderSuggestions = (suggestions) => {
+      currentSuggestions = suggestions;
+      suggestionsElement.innerHTML = "";
+
+      if (suggestions.length === 0) {
+        closeSuggestions();
+        return;
+      }
+
+      suggestions.forEach((suggestion, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.id = `company-suggestion-${index}`;
+        button.className = "autocomplete-item";
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", "false");
+
+        const label = document.createElement("span");
+        label.className = "autocomplete-item-label";
+        label.textContent = suggestion.company_name;
+
+        const ticker = document.createElement("span");
+        ticker.className = "autocomplete-item-ticker";
+        ticker.textContent = suggestion.ticker_symbol;
+
+        button.append(label, ticker);
+        button.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          selectSuggestion(suggestion);
+        });
+        suggestionsElement.appendChild(button);
+      });
+
+      activeIndex = -1;
+      suggestionsElement.hidden = false;
+      companyInput.setAttribute("aria-expanded", "true");
+    };
+
+    const fetchSuggestions = async (query) => {
+      if (abortController) {
+        abortController.abort();
+      }
+
+      abortController = new AbortController();
+      const requestId = ++latestRequestId;
+      try {
+        const response = await fetch(
+          `/api/company-suggestions?q=${encodeURIComponent(query)}`,
+          { signal: abortController.signal },
+        );
+        if (!response.ok) {
+          closeSuggestions();
+          return;
+        }
+
+        const payload = await response.json();
+        if (
+          requestId !== latestRequestId ||
+          companyInput.value.trim() !== query
+        ) {
+          return;
+        }
+        renderSuggestions(payload.suggestions || []);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          closeSuggestions();
+        }
+      }
+    };
+
+    companyInput.addEventListener("input", () => {
+      const query = companyInput.value.trim();
+      if (debounceTimer) {
+        window.clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
+      }
+
+      if (!query) {
+        closeSuggestions();
+        return;
+      }
+
+      debounceTimer = window.setTimeout(() => {
+        fetchSuggestions(query);
+      }, 120);
+    });
+
+    companyInput.addEventListener("keydown", (event) => {
+      if (suggestionsElement.hidden || currentSuggestions.length === 0) {
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        activeIndex = (activeIndex + 1) % currentSuggestions.length;
+        updateActiveSuggestion();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        activeIndex =
+            (activeIndex - 1 + currentSuggestions.length) %
+          currentSuggestions.length;
+        updateActiveSuggestion();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        selectSuggestion(
+          currentSuggestions[
+            activeIndex >= 0 ? activeIndex : 0
+          ],
+        );
+      } else if (event.key === "Escape") {
+        closeSuggestions();
+      }
+    });
+
+    companyInput.addEventListener("blur", () => {
+      window.setTimeout(closeSuggestions, 120);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (
+        event.target !== companyInput &&
+        !suggestionsElement.contains(event.target)
+      ) {
+        closeSuggestions();
+      }
+    });
+  }
+
   const configElement = document.getElementById("sentify-config");
-  if (!configElement) return;
+  const slider = document.getElementById("slider");
+  if (!configElement || !slider) {
+    if (form) {
+      form.addEventListener("submit", function () {
+        const loading = document.getElementById("loading");
+        if (loading) loading.style.display = "block";
+      });
+    }
+    return;
+  }
 
   const {
     recommendationInputs = [],
@@ -8,9 +201,6 @@ document.addEventListener("DOMContentLoaded", function () {
     startDay = 0,
     endDay = 2,
   } = JSON.parse(configElement.textContent);
-
-  const slider = document.getElementById("slider");
-  if (!slider) return;
 
   const formatter = {
     to: (value) =>
@@ -33,7 +223,6 @@ document.addEventListener("DOMContentLoaded", function () {
     tooltips: [formatter, formatter],
   });
 
-  const form = document.querySelector(".search-form");
   const hiddenStart = document.getElementById("start");
   const hiddenEnd = document.getElementById("end");
 

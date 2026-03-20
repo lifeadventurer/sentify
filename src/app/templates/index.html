@@ -88,14 +88,25 @@
         <form action="/" method="post" class="search-form">
           <div class="top-controls-row">
             <div class="input-group search-input-group">
-              <input
-                list="companies"
-                name="company"
-                id="company"
-                class="form-control"
-                {% if company_exists %}value="{{ ticker_symbol }}"{% endif %}
-                placeholder="Enter company or ticker"
-              />
+              <div class="company-autocomplete">
+                <input
+                  name="company"
+                  id="company"
+                  class="form-control"
+                  value="{{ search_value }}"
+                  placeholder="Enter company or ticker"
+                  autocomplete="off"
+                  aria-autocomplete="list"
+                  aria-controls="company-suggestions"
+                  aria-expanded="false"
+                />
+                <div
+                  id="company-suggestions"
+                  class="autocomplete-dropdown"
+                  role="listbox"
+                  hidden
+                ></div>
+              </div>
               <input type="hidden" name="start" id="start" value="0" />
               <input type="hidden" name="end" id="end" value="2" />
               <button type="submit" class="btn btn-primary">

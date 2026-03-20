@@ -297,6 +297,7 @@ def _render_index(**context):
     default_context = {
         "max_news_lookback_days": MAX_NEWS_LOOKBACK_DAYS,
         "offline_mode": OFFLINE_MODE,
+        "search_value": "",
         "start_day": 0,
         "end_day": 2,
         "weight_config": _get_weight_config_from_form(),
@@ -334,6 +335,11 @@ def create_app() -> Flask:
             message=request.args.get("message"),
             message_level=message_level,
         )
+
+    @app.route("/api/company-suggestions")
+    def company_suggestions():
+        query = request.args.get("q", "")
+        return {"suggestions": data.get_company_suggestions(query)}
 
     @app.route("/clear-cache", methods=["POST"])
     def clear_cache():
@@ -492,6 +498,7 @@ def create_app() -> Flask:
                 company_exists=company_exists,
                 company_name=company_name,
                 ticker_symbol=ticker_symbol,
+                search_value=f"{company_name} ({ticker_symbol})",
                 news=news,
                 recommended_action=recommended_action,
                 confidence_index=f"{confidence_index: .3f}",
@@ -504,6 +511,7 @@ def create_app() -> Flask:
         else:
             return _render_index(
                 company_exists=company_exists,
+                search_value=input_company,
                 message="No such company exists",
                 start_day=start_day,
                 end_day=end_day,
