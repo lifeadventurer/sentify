@@ -1,8 +1,9 @@
 import json
 from datetime import datetime, timedelta
 from multiprocessing import Pool
+from urllib.parse import urlencode
 
-from flask import Flask, render_template, request
+from flask import Flask, redirect, render_template, request
 
 from config.config import (
     CPU_COUNT,
@@ -16,6 +17,8 @@ from config.config import (
 )
 from scrapers import yahoo_news_scraper
 from utils import action, cache, data, sentiment_analyzer, time
+
+CACHE_NAMESPACES = ("news_urls", "news_articles", "news_sentiment")
 
 
 def _get_sentiment_cache_key(news_url: str) -> str:
@@ -290,26 +293,64 @@ def calculate_paragraph_score(
     )
 
 
+def _render_index(**context):
+    default_context = {
+        "max_news_lookback_days": MAX_NEWS_LOOKBACK_DAYS,
+        "offline_mode": OFFLINE_MODE,
+        "start_day": 0,
+        "end_day": 2,
+        "weight_config": _get_weight_config_from_form(),
+        "recommendation_inputs": [],
+        "message_level": "info",
+    }
+    default_context.update(context)
+    return render_template("index.html", **default_context)
+
+
+def _redirect_home_with_message(message: str, message_level: str = "info"):
+    query_string = urlencode(
+        {"message": message, "message_level": message_level}
+    )
+    return redirect(f"/?{query_string}")
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
     cache.cleanup_expired_json(
         {
-            "news_urls": NEWS_LIST_CACHE_RETENTION_SECONDS,
-            "news_articles": NEWS_ARTICLE_CACHE_RETENTION_SECONDS,
-            "news_sentiment": SENTIMENT_CACHE_RETENTION_SECONDS,
+            CACHE_NAMESPACES[0]: NEWS_LIST_CACHE_RETENTION_SECONDS,
+            CACHE_NAMESPACES[1]: NEWS_ARTICLE_CACHE_RETENTION_SECONDS,
+            CACHE_NAMESPACES[2]: SENTIMENT_CACHE_RETENTION_SECONDS,
         }
     )
 
     @app.route("/")
     def home():
-        return render_template(
-            "index.html",
-            max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
-            offline_mode=OFFLINE_MODE,
-            start_day=0,
-            end_day=2,
-            weight_config=_get_weight_config_from_form(),
-            recommendation_inputs=[],
+        message_level = request.args.get("message_level", "info")
+        if message_level not in {"info", "error"}:
+            message_level = "info"
+
+        return _render_index(
+            message=request.args.get("message"),
+            message_level=message_level,
+        )
+
+    @app.route("/clear-cache", methods=["POST"])
+    def clear_cache():
+        if cache.clear_cache_namespaces(CACHE_NAMESPACES):
+            return _redirect_home_with_message(
+                message=(
+                    "Cache cleared. Cached news, article bodies, and "
+                    "sentiment results were removed."
+                )
+            )
+
+        return _redirect_home_with_message(
+            message=(
+                "Cache could not be cleared. Check filesystem permissions "
+                "for the configured cache directory."
+            ),
+            message_level="error",
         )
 
     @app.route("/", methods=["POST"])
@@ -447,33 +488,28 @@ def create_app() -> Flask:
                 )
             )
 
-            return render_template(
-                "index.html",
+            return _render_index(
                 company_exists=company_exists,
                 company_name=company_name,
                 ticker_symbol=ticker_symbol,
                 news=news,
                 recommended_action=recommended_action,
                 confidence_index=f"{confidence_index: .3f}",
-                max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
                 message=message,
-                offline_mode=OFFLINE_MODE,
                 start_day=start_day,
                 end_day=end_day,
                 weight_config=weight_config,
                 recommendation_inputs=sentiment_scores_of_news,
             )
         else:
-            return render_template(
-                "index.html",
+            return _render_index(
                 company_exists=company_exists,
                 message="No such company exists",
-                max_news_lookback_days=MAX_NEWS_LOOKBACK_DAYS,
-                offline_mode=OFFLINE_MODE,
                 start_day=start_day,
                 end_day=end_day,
                 weight_config=weight_config,
                 recommendation_inputs=[],
+                message_level="error",
             )
 
     return app

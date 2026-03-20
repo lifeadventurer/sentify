@@ -1,7 +1,9 @@
 import hashlib
 import json
 import os
+import shutil
 import time
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -99,3 +101,22 @@ def cleanup_expired_json(ttl_by_namespace: dict[str, int]) -> None:
                 cache_file.unlink()
             except OSError:
                 pass
+
+
+def clear_cache_namespaces(namespaces: Iterable[str]) -> bool:
+    try:
+        SENTIFY_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+
+    for namespace in dict.fromkeys(namespaces):
+        cache_entry = SENTIFY_CACHE_DIR / namespace
+        try:
+            if cache_entry.is_dir() and not cache_entry.is_symlink():
+                shutil.rmtree(cache_entry)
+            elif cache_entry.exists():
+                cache_entry.unlink()
+        except OSError:
+            return False
+
+    return True

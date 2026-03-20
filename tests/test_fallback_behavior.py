@@ -6,6 +6,7 @@ import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -62,8 +63,12 @@ def _install_flask_stub() -> None:
             return decorator
 
     module.Flask = Flask
+    module.redirect = lambda location: {
+        "location": location,
+        "status_code": 302,
+    }
     module.render_template = lambda *_args, **_kwargs: None
-    module.request = types.SimpleNamespace(form={})
+    module.request = types.SimpleNamespace(form={}, args={})
     sys.modules["flask"] = module
 
 
@@ -677,6 +682,69 @@ class FallbackBehaviorTests(unittest.TestCase):
                 "news_sentiment": 14400,
             }
         )
+
+    def test_clear_cache_namespaces_preserves_unrelated_entries(self) -> None:
+        news_dir = self.cache_dir / "news_urls"
+        news_dir.mkdir(parents=True)
+        (news_dir / "payload.json").write_text('{"cached_at": 1}')
+        (self.cache_dir / "shared-cache.tmp").write_text("keep me")
+
+        self.assertTrue(
+            cache.clear_cache_namespaces(flask_app.CACHE_NAMESPACES)
+        )
+        self.assertTrue(self.cache_dir.exists())
+        self.assertEqual(
+            [self.cache_dir / "shared-cache.tmp"],
+            list(self.cache_dir.iterdir()),
+        )
+
+    def test_clear_cache_route_redirects_with_success_message(self) -> None:
+        app = flask_app.create_app()
+        clear_cache = app.routes[("/clear-cache", ("POST",))]
+        (self.cache_dir / "news_sentiment").mkdir(parents=True)
+        (self.cache_dir / "news_sentiment" / "payload.json").write_text(
+            '{"cached_at": 1}'
+        )
+
+        response = clear_cache()
+        redirect_params = parse_qs(urlsplit(response["location"]).query)
+
+        self.assertEqual(
+            "/",
+            urlsplit(response["location"]).path,
+        )
+        self.assertEqual(
+            [
+                "Cache cleared. Cached news, article bodies, and sentiment results were removed."
+            ],
+            redirect_params["message"],
+        )
+        self.assertEqual(["info"], redirect_params["message_level"])
+        self.assertEqual(302, response["status_code"])
+
+    def test_home_renders_redirected_status_message(self) -> None:
+        app = flask_app.create_app()
+        home = app.routes[("/", ("GET",))]
+
+        with (
+            patch.object(
+                flask_app.request,
+                "args",
+                {
+                    "message": "Cache cleared.",
+                    "message_level": "error",
+                },
+            ),
+            patch.object(
+                flask_app,
+                "render_template",
+                side_effect=lambda *_args, **kwargs: kwargs,
+            ),
+        ):
+            response = home()
+
+        self.assertEqual("Cache cleared.", response["message"])
+        self.assertEqual("error", response["message_level"])
 
 
 if __name__ == "__main__":

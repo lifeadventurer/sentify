@@ -86,6 +86,13 @@
         margin: 0 auto;
       }
 
+      .search-actions {
+        max-width: 600px;
+        margin: 1rem auto 0;
+        display: flex;
+        justify-content: flex-end;
+      }
+
       .form-control {
         border: 1px solid var(--border-color);
         border-radius: 8px;
@@ -504,7 +511,7 @@
           tooltips: [formatter, formatter]
         });
 
-        const form = document.querySelector('form');
+        const form = document.querySelector(".search-form");
         const hiddenStart = document.getElementById('start');
         const hiddenEnd = document.getElementById('end');
 
@@ -896,6 +903,18 @@
             </div>
           </div>
         </form>
+
+        <div class="search-actions">
+          <form
+            action="/clear-cache"
+            method="post"
+            onsubmit="return window.confirm('Clear all cached news, article bodies, and sentiment results?');"
+          >
+            <button type="submit" class="btn btn-outline-danger">
+              <i class="fas fa-trash-can me-2"></i>Clear Cache
+            </button>
+          </form>
+        </div>
       </div>
 
       <!-- Loading State -->
@@ -906,8 +925,8 @@
 
       <!-- Error Message -->
       {% if not company_exists and message %}
-      <div class="error-message">
-        <i class="fas fa-exclamation-triangle me-2"></i>{{ message }}
+      <div class="{% if message_level == 'error' %}error-message{% else %}info-message{% endif %}">
+        <i class="fas {% if message_level == 'error' %}fa-exclamation-triangle{% else %}fa-circle-info{% endif %} me-2"></i>{{ message }}
       </div>
       {% endif %}
 
