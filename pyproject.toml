@@ -1,6 +1,6 @@
 [project]
 name = "sentify"
-version = "0.1.0"
+version = "1.0.0"
 description = "Leveraging Sentiment Analysis on News for Stock Market Insights"
 authors = [
     {name = "lifeadventurer", email = "life0adventurer@gmail.com"}
