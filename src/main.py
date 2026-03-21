@@ -1,5 +1,5 @@
 from app import flask_app
-from config.config import TOP_COMPANIES_COUNT
+from config.config import DEBUG_MODE, TOP_COMPANIES_COUNT
 from utils import data
 
 app = flask_app.create_app()
@@ -11,4 +11,4 @@ def init():
 
 if __name__ == "__main__":
     init()
-    app.run(debug=True)
+    app.run(debug=DEBUG_MODE)

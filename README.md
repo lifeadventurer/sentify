@@ -121,6 +121,7 @@ Optional model overrides:
 export SENTIFY_MODEL_PATH="/path/to/local/model"
 export SENTIFY_MODEL_ID="marcev/financebert"
 export SENTIFY_MODEL_REVISION="<pinned-revision>"
+export SENTIFY_DEBUG=false
 export SENTIFY_MODEL_LOCAL_FILES_ONLY=true
 export SENTIFY_OFFLINE_MODE=false
 export SENTIFY_CACHE_DIR="/path/to/cache"
@@ -175,6 +176,9 @@ CPU_COUNT = 2
   is set.
 - `SENTIFY_MODEL_REVISION`: Optional pinned revision for reproducible Hugging
   Face loads.
+- `SENTIFY_DEBUG`: Enables Flask debug mode when set to `true`, `1`, `yes`, or
+  `on`. Defaults to `false` so local and production runs stay non-debug unless
+  you opt in.
 - `SENTIFY_MODEL_LOCAL_FILES_ONLY`: Forces local-only loading when set to
   `true`, `1`, `yes`, or `on`.
 - `SENTIFY_OFFLINE_MODE`: Disables Yahoo network fetches, reuses cached data
