@@ -1,4 +1,8 @@
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 def convert_timestamp_to_seconds(
@@ -9,8 +13,8 @@ def convert_timestamp_to_seconds(
         timestamp_seconds = int(timestamp.timestamp())
         return timestamp_seconds
 
-    except ValueError as e:
-        print(f"Error parsing timestamp: {e}")
+    except ValueError as exc:
+        logger.warning("Error parsing timestamp %r: %s", timestamp_str, exc)
         return None
 
 

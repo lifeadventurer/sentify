@@ -1,5 +1,10 @@
+import logging
+
 import matplotlib.pyplot as plt
 import yfinance as yf
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 def plot_minutely_detail(ticker: str, start_datetime: str, end_datetime: str):
@@ -7,12 +12,42 @@ def plot_minutely_detail(ticker: str, start_datetime: str, end_datetime: str):
         data = yf.download(
             ticker, start=start_datetime, end=end_datetime, interval="5m"
         )
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        logger.warning(
+            "Failed to download minutely stock prices for %s between %s and "
+            "%s: %s",
+            ticker,
+            start_datetime,
+            end_datetime,
+            exc,
+        )
+        return
 
-        # data = data.between_time('09:30', '16:00')
-        # data = data.reset_index()
+    if data is None or data.empty:
+        logger.warning(
+            "No minutely stock price data returned for %s between %s and %s.",
+            ticker,
+            start_datetime,
+            end_datetime,
+        )
+        return
 
-        grouped_data = data.groupby(data.index.date)
+    if "Close" not in data:
+        logger.warning(
+            "Downloaded minutely stock price data for %s between %s and %s "
+            "is missing the Close column.",
+            ticker,
+            start_datetime,
+            end_datetime,
+        )
+        return
 
+    # data = data.between_time('09:30', '16:00')
+    # data = data.reset_index()
+
+    grouped_data = data.groupby(data.index.date)
+
+    try:
         plt.figure(figsize=(10, 6))
 
         for date, group in grouped_data:
@@ -29,8 +64,17 @@ def plot_minutely_detail(ticker: str, start_datetime: str, end_datetime: str):
         plt.savefig(
             f"./src/app/static/images/{ticker}_{start_datetime}_to_{end_datetime}.png"
         )
-    except Exception as e:
-        print("An error occurred:", e)
+        plt.close()
+    except (KeyError, OSError, RuntimeError, TypeError, ValueError) as exc:
+        plt.close()
+        logger.warning(
+            "Failed to render minutely stock price plot for %s between %s "
+            "and %s: %s",
+            ticker,
+            start_datetime,
+            end_datetime,
+            exc,
+        )
 
 
 # Example usage

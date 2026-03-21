@@ -1,5 +1,10 @@
+import logging
+
 import pandas
 import yfinance as yf
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 def get_stock_prices(
@@ -9,14 +14,36 @@ def get_stock_prices(
         data = yf.download(
             ticker_symbol, start=start_datetime, end=end_datetime, interval="1d"
         )
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        logger.warning(
+            "Failed to download stock prices for %s between %s and %s: %s",
+            ticker_symbol,
+            start_datetime,
+            end_datetime,
+            exc,
+        )
+        return None
 
+    if data is None:
+        logger.warning(
+            "No stock price data object was returned for %s between %s and %s.",
+            ticker_symbol,
+            start_datetime,
+            end_datetime,
+        )
+        return None
+
+    try:
         # Drop the last two columns - Adj Close, Volume
-        data = data.drop(data.columns[-2:], axis=1)
-
-        return data
-
-    except Exception as e:
-        print("An error occurred:", e)
+        return data.drop(data.columns[-2:], axis=1)
+    except (IndexError, KeyError, TypeError, ValueError) as exc:
+        logger.warning(
+            "Failed to normalize stock prices for %s between %s and %s: %s",
+            ticker_symbol,
+            start_datetime,
+            end_datetime,
+            exc,
+        )
         return None
 
 

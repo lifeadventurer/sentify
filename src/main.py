@@ -1,3 +1,5 @@
+import logging
+
 from app import flask_app
 from config.config import DEBUG_MODE, TOP_COMPANIES_COUNT
 from utils import data
@@ -10,5 +12,6 @@ def init():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     init()
     app.run(debug=DEBUG_MODE)

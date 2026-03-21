@@ -116,6 +116,7 @@ _install_transformers_stub()
 from app import flask_app  # noqa: E402
 from scrapers import yahoo_news_scraper  # noqa: E402
 from utils import cache, sentiment_analyzer  # noqa: E402
+from utils import time as time_utils  # noqa: E402
 
 
 class FallbackBehaviorTests(unittest.TestCase):
@@ -292,6 +293,27 @@ class FallbackBehaviorTests(unittest.TestCase):
 
         self.assertEqual([], news)
         self.assertEqual("offline_unavailable", source)
+
+    def test_offline_mode_without_exact_news_cache_logs_warning(self) -> None:
+        with (
+            patch.object(yahoo_news_scraper, "OFFLINE_MODE", True),
+            self.assertLogs(
+                yahoo_news_scraper.logger.name,
+                level="WARNING",
+            ) as captured_logs,
+        ):
+            yahoo_news_scraper.get_news_URLs(
+                "AAPL",
+                "2026-03-10T00:00:00Z",
+                "2026-03-12T00:00:00Z",
+                title_flag=True,
+            )
+
+        self.assertIn(
+            "Offline mode enabled and no cached news list is available for "
+            "AAPL.",
+            captured_logs.output[0],
+        )
 
     def test_network_failure_reuses_stale_exact_article_cache(self) -> None:
         news_url = "https://example.com/article"
@@ -745,6 +767,16 @@ class FallbackBehaviorTests(unittest.TestCase):
 
         self.assertEqual("Cache cleared.", response["message"])
         self.assertEqual("error", response["message_level"])
+
+    def test_convert_timestamp_to_seconds_logs_invalid_input(self) -> None:
+        with self.assertLogs(time_utils.logger.name, level="WARNING") as logs:
+            result = time_utils.convert_timestamp_to_seconds(
+                "%Y-%m-%dT%H:%M:%SZ",
+                "invalid-timestamp",
+            )
+
+        self.assertIsNone(result)
+        self.assertIn("Error parsing timestamp", logs.output[0])
 
 
 if __name__ == "__main__":
