@@ -69,8 +69,11 @@ def cleanup_expired_json(ttl_by_namespace: dict[str, int]) -> None:
 
     for namespace, ttl_seconds in ttl_by_namespace.items():
         namespace_dir = SENTIFY_CACHE_DIR / namespace
+        if not namespace_dir.exists():
+            continue
+
         try:
-            cache_files = namespace_dir.iterdir()
+            cache_files = list(namespace_dir.iterdir())
         except OSError:
             continue
 

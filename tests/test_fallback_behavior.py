@@ -720,6 +720,17 @@ class FallbackBehaviorTests(unittest.TestCase):
             list(self.cache_dir.iterdir()),
         )
 
+    def test_cleanup_expired_json_skips_missing_namespace_dirs(self) -> None:
+        cache.cleanup_expired_json(
+            {
+                "news_urls": 3600,
+                "news_articles": 3600,
+                "news_sentiment": 3600,
+            }
+        )
+
+        self.assertEqual([], list(self.cache_dir.iterdir()))
+
     def test_clear_cache_route_redirects_with_success_message(self) -> None:
         app = flask_app.create_app()
         clear_cache = app.routes[("/clear-cache", ("POST",))]
